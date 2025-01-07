@@ -175,6 +175,29 @@ class DerivativeTradingRule(TradingRule):
         >>> print(future.perpetual)  # True
     """
 
+    @model_validator(mode="after")
+    def fix_collateral_tokens(self) -> Self:
+        """Set default collateral tokens if not specified.
+
+        For linear instruments, uses quote currency as collateral
+        For inverse instruments, uses base currency as collateral
+
+        Returns:
+            Self: The validated instance
+        """
+        instrument_info = self.trading_pair.instrument_info
+        if instrument_info.is_linear:
+            if self.buy_order_collateral_token is None:
+                self.buy_order_collateral_token = instrument_info.quote
+            if self.sell_order_collateral_token is None:
+                self.sell_order_collateral_token = instrument_info.quote
+        elif instrument_info.is_inverse:
+            if self.buy_order_collateral_token is None:
+                self.buy_order_collateral_token = instrument_info.base
+            if self.sell_order_collateral_token is None:
+                self.sell_order_collateral_token = instrument_info.base
+        return self
+
     @field_serializer("strike_price")
     def serialize_strike_price(self, strike_price: Decimal | None) -> str | None:
         return str(strike_price) if strike_price is not None else None

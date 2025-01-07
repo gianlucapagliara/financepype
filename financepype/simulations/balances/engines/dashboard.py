@@ -8,7 +8,7 @@ from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.fees import OperationFee as Fee
 from financepype.operations.orders.models import OrderType, PositionAction, TradeType
 from financepype.platforms.platform import Platform
-from financepype.rules.trading_rule import TradingRule
+from financepype.rules.trading_rule import DerivativeTradingRule, TradingRule
 from financepype.simulations.balances.engines.models import AssetCashflow, OrderDetails
 from financepype.simulations.balances.engines.multiengine import BalanceMultiEngine
 
@@ -29,13 +29,22 @@ def create_sample_order(
 
     trading_pair_obj = TradingPair(name=trading_pair)
 
-    trading_rule = TradingRule(
-        trading_pair=trading_pair_obj,
-        min_order_size=Decimal("0.0001"),
-        min_price_increment=Decimal("0.01"),
-        min_notional_size=Decimal("10"),
-        supports_market_orders=True,
-    )
+    if trading_pair_obj.instrument_info.is_spot:
+        trading_rule = TradingRule(
+            trading_pair=trading_pair_obj,
+            min_order_size=Decimal("0.0001"),
+            min_price_increment=Decimal("0.01"),
+            min_notional_size=Decimal("10"),
+            supports_market_orders=True,
+        )
+    else:
+        trading_rule = DerivativeTradingRule(
+            trading_pair=trading_pair_obj,
+            min_order_size=Decimal("0.0001"),
+            min_price_increment=Decimal("0.01"),
+            min_notional_size=Decimal("10"),
+            supports_market_orders=True,
+        )
 
     return OrderDetails(
         platform=platform,

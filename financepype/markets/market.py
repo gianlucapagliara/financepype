@@ -139,6 +139,10 @@ class MarketInfo(BaseModel):
         return self
 
     @property
+    def is_spot(self) -> bool:
+        return self.instrument_type.is_spot
+
+    @property
     def is_derivative(self) -> bool:
         return self.instrument_type.is_derivative
 
@@ -153,6 +157,14 @@ class MarketInfo(BaseModel):
     @property
     def is_option(self) -> bool:
         return self.instrument_type.is_option
+
+    @property
+    def is_linear(self) -> bool:
+        return self.instrument_type.is_linear
+
+    @property
+    def is_inverse(self) -> bool:
+        return self.instrument_type.is_inverse
 
     @classmethod
     def get_timeframe_type(
