@@ -202,7 +202,7 @@ class BalanceTracker:
     def set_position(
         self, position: Position, reason: str, balance_type: BalanceType
     ) -> None:
-        self.set_balance(position.asset, position.value, reason, balance_type)
+        self.set_balance(position.asset, position.amount, reason, balance_type)
         self._positions[position.asset] = position
 
     def get_position(self, asset: DerivativeContract) -> Position | None:

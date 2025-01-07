@@ -3,7 +3,6 @@ from decimal import Decimal
 import pandas as pd
 import streamlit as st
 
-from financepype.assets.factory import AssetFactory
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.fees import OperationFee as Fee
@@ -20,17 +19,15 @@ def create_sample_order(
     amount: Decimal,
     price: Decimal,
     platform_id: str = "binance",
-    trading_pair: str = "BTC-USDT",
+    trading_pair: str = "EXAMPLE-USDT",
     fee_type: FeeType = FeeType.PERCENTAGE,
     fee_impact: FeeImpactType = FeeImpactType.ADDED_TO_COSTS,
-    fee_amount: Decimal = Decimal("0.001"),
+    fee_amount: Decimal = Decimal("0.1"),
 ) -> OrderDetails:
     """Create a sample order for simulation."""
     platform = Platform(platform_id)
 
     trading_pair_obj = TradingPair(name=trading_pair)
-
-    fee_asset = AssetFactory.get_asset(platform, trading_pair_obj.quote)
 
     trading_rule = TradingRule(
         trading_pair=trading_pair_obj,
@@ -52,7 +49,7 @@ def create_sample_order(
         position_action=position_action,
         index_price=price,
         fee=Fee(
-            asset=fee_asset,
+            asset=None,
             fee_type=fee_type,
             impact_type=fee_impact,
             amount=fee_amount,
@@ -97,9 +94,9 @@ def main() -> None:
         ],
     )
 
-    trading_pair = st.sidebar.text_input("Trading Pair", value="BTC-USDT")
+    trading_pair = st.sidebar.text_input("Trading Pair", value="EXAMPLE-USDT")
     amount = st.sidebar.number_input("Amount", value=1.0, step=0.1)
-    price = st.sidebar.number_input("Price", value=50000.0, step=100.0)
+    price = st.sidebar.number_input("Price", value=100.0, step=100.0)
 
     # Fee settings
     st.sidebar.header("Fee Settings")
@@ -129,7 +126,7 @@ def main() -> None:
         trading_pair=trading_pair,
         fee_type=fee_type,
         fee_impact=fee_impact,
-        fee_amount=Decimal(str(fee_amount)) / Decimal("100")
+        fee_amount=Decimal(str(fee_amount))
         if fee_type == FeeType.PERCENTAGE
         else Decimal(str(fee_amount)),
     )

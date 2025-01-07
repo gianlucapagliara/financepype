@@ -83,7 +83,7 @@ def order_details(
         entry_price=Decimal("50000"),
         exit_price=None,
         fee=OperationFee(
-            asset=quote_asset,
+            asset=None,
             amount=Decimal("0.1"),
             fee_type=FeeType.PERCENTAGE,
             impact_type=FeeImpactType.ADDED_TO_COSTS,
@@ -168,8 +168,11 @@ def test_calculate_fee_amount_percentage(order_details: OrderDetails) -> None:
     )
 
 
-def test_calculate_fee_amount_absolute(order_details: OrderDetails) -> None:
+def test_calculate_fee_amount_absolute(
+    order_details: OrderDetails, quote_asset: Asset
+) -> None:
     """Test fee calculation with absolute fee."""
+    order_details.fee.asset = quote_asset
     order_details.fee.fee_type = FeeType.ABSOLUTE
     order_details.fee.amount = Decimal("10")
     assert TestPerpetualBalanceEngine._calculate_fee_amount(order_details) == Decimal(

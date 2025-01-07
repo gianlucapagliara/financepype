@@ -78,6 +78,18 @@ class SpotBalanceEngine(BalanceEngine):
         return asset
 
     @classmethod
+    def _get_expected_fee_asset(cls, order_details: OrderDetails) -> Asset:
+        """Get the expected fee asset based on the trade type and fee impact type."""
+        if order_details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
+            return cls._get_inflow_asset(order_details)
+        elif order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
+            return cls._get_outflow_asset(order_details)
+        else:
+            raise ValueError(
+                f"Unsupported fee impact type: {order_details.fee.impact_type}"
+            )
+
+    @classmethod
     def _get_fee_impact(cls, order_details: OrderDetails) -> dict[Asset, Decimal]:
         """Calculate the fee amount based on fee type, fee asset, and trade details.
 
@@ -86,37 +98,21 @@ class SpotBalanceEngine(BalanceEngine):
         - Fixed amount in the fee asset
         - Example: 10 USDT fee for any trade size
 
-        2. Percentage Fees in Quote Currency (e.g., USDT in BTC-USDT):
-        - Always based on notional value (amount * price)
+        2. Percentage Fees (e.g., USDT in BTC-USDT):
         - BUY with ADDED_TO_COSTS:
             * Trading 1 BTC at $50,000 with 0.1% fee
             * Fee = $50,000 * 0.1% = $50 USDT
         - BUY with DEDUCTED_FROM_RETURNS:
-            * Same calculation as above
-            * Fee = $50,000 * 0.1% = $50 USDT
+            * Trading 1 BTC at $50,000 with 0.1% fee
+            * Fee = 1 BTC * 0.1% = 0.001 BTC
         - SELL with ADDED_TO_COSTS:
             * Trading 1 BTC at $50,000 with 0.1% fee
-            * Fee = $50,000 * 0.1% = $50 USDT
-        - SELL with DEDUCTED_FROM_RETURNS:
-            * Same calculation as above
-            * Fee = $50,000 * 0.1% = $50 USDT
-
-        3. Percentage Fees in Base Currency (e.g., BTC in BTC-USDT):
-        - Always based on trade amount
-        - BUY with ADDED_TO_COSTS:
-            * Trading 1 BTC with 0.1% fee
-            * Fee = 1 BTC * 0.1% = 0.001 BTC
-        - BUY with DEDUCTED_FROM_RETURNS:
-            * Same calculation as above
-            * Fee = 1 BTC * 0.1% = 0.001 BTC
-        - SELL with ADDED_TO_COSTS:
-            * Trading 1 BTC with 0.1% fee
             * Fee = 1 BTC * 0.1% = 0.001 BTC
         - SELL with DEDUCTED_FROM_RETURNS:
-            * Same calculation as above
-            * Fee = 1 BTC * 0.1% = 0.001 BTC
+            * Trading 1 BTC at $50,000 with 0.1% fee
+            * Fee = $50,000 * 0.1% = $50 USDT
 
-        4. Percentage Fees in Other Assets:
+        3. Percentage Fees in Other Assets:
         - Not supported yet
         - Would require price data for conversion
 
@@ -130,26 +126,32 @@ class SpotBalanceEngine(BalanceEngine):
             NotImplementedError: If fee is in an asset not involved in the trade
             ValueError: If fee type is not supported
         """
-        fee_asset = order_details.fee.asset
-
         # Handle absolute fees (fixed amount)
         if order_details.fee.fee_type == FeeType.ABSOLUTE:
-            return {fee_asset: order_details.fee.amount}
+            if order_details.fee.asset is None:
+                raise ValueError("Fee asset is required for absolute fees")
+            return {order_details.fee.asset: order_details.fee.amount}
 
         # Handle percentage fees
         if order_details.fee.fee_type == FeeType.PERCENTAGE:
-            # Verify fee asset is involved in the trade
-            expected_asset = cls._get_outflow_asset(order_details)
-            if fee_asset != expected_asset:
+            # Get expected fee asset based on impact type
+            expected_asset = cls._get_expected_fee_asset(order_details)
+
+            # If fee asset is specified, verify it matches expected
+            if (
+                order_details.fee.asset is not None
+                and order_details.fee.asset != expected_asset
+            ):
                 raise NotImplementedError(
-                    "Percentage fee on not involved asset not supported yet"
+                    "Percentage fee on not involved asset not supported yet. "
+                    f"Fee asset: {str(order_details.fee.asset)}, expected asset: {str(expected_asset)}"
                 )
 
-            # Determine if fee should be based on notional value
+            # Calculate fee amount based on whether it's quote or base currency
             quote_asset = AssetFactory.get_asset(
                 order_details.platform, order_details.trading_pair.quote
             )
-            is_quote_currency_fee = fee_asset == quote_asset
+            is_quote_currency_fee = expected_asset == quote_asset
 
             # Calculate fee amount
             if is_quote_currency_fee:
@@ -164,7 +166,7 @@ class SpotBalanceEngine(BalanceEngine):
                     order_details.fee.amount / Decimal("100")
                 )
 
-            return {fee_asset: fee_amount}
+            return {expected_asset: fee_amount}
 
         # Handle unsupported fee types
         raise ValueError(f"Unsupported fee type: {order_details.fee.fee_type}")
@@ -212,7 +214,7 @@ class SpotBalanceEngine(BalanceEngine):
 
         # Fee
         if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
-            fee_asset = order_details.fee.asset
+            fee_asset = cls._get_expected_fee_asset(order_details)
             result.append(
                 AssetCashflow(
                     asset=fee_asset,

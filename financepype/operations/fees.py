@@ -2,7 +2,7 @@ from decimal import Decimal
 from enum import Enum
 from typing import Self
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from financepype.assets.asset import Asset
 
@@ -24,10 +24,8 @@ class OperationFee(BaseModel):
     associated asset, type, and impact on costs or returns.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     amount: Decimal = Field(ge=0)
-    asset: Asset
+    asset: Asset | None = None
     fee_type: FeeType
     impact_type: FeeImpactType
 

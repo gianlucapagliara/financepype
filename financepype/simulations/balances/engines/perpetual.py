@@ -103,6 +103,18 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         raise NotImplementedError
 
     @classmethod
+    def _get_expected_fee_asset(cls, order_details: OrderDetails) -> Asset:
+        """Get the expected fee asset based on the trade type and fee impact type."""
+        if order_details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
+            return cls._get_outflow_asset(order_details)
+        elif order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
+            return cls._get_outflow_asset(order_details)
+        else:
+            raise ValueError(
+                f"Unsupported fee impact type: {order_details.fee.impact_type}"
+            )
+
+    @classmethod
     def _calculate_fee_amount(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the fee amount based on fee type and trade details.
 
@@ -126,17 +138,22 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             ValueError: If fee type is not supported
             NotImplementedError: If fee is in an asset not involved in the trade
         """
-        fee_asset = order_details.fee.asset
-        collateral_asset = cls._get_outflow_asset(order_details)
+        expected_asset = cls._get_expected_fee_asset(order_details)
 
-        # Validate fee asset is involved in the trade
-        if fee_asset != collateral_asset:
+        # If fee asset is specified, verify it matches expected
+        if (
+            order_details.fee.asset is not None
+            and order_details.fee.asset != expected_asset
+        ):
             raise NotImplementedError(
-                f"Fee in {fee_asset} not supported. Expected {collateral_asset}"
+                "Fee on not involved asset not supported yet. "
+                f"Fee asset: {str(order_details.fee.asset)}, expected asset: {str(expected_asset)}"
             )
 
         # Handle absolute fees (fixed amount)
         if order_details.fee.fee_type == FeeType.ABSOLUTE:
+            if order_details.fee.asset is None:
+                raise ValueError("Fee asset is required for absolute fees")
             return order_details.fee.amount
 
         # Handle percentage fees
@@ -239,7 +256,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
 
         # Fee
         if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
-            fee_asset = order_details.fee.asset
+            fee_asset = cls._get_expected_fee_asset(order_details)
             result.append(
                 AssetCashflow(
                     asset=fee_asset,
@@ -272,9 +289,10 @@ class BasePerpetualBalanceEngine(BalanceEngine):
 
         # Fee
         if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
+            fee_asset = cls._get_expected_fee_asset(order_details)
             result.append(
                 AssetCashflow(
-                    asset=order_details.fee.asset,
+                    asset=fee_asset,
                     involvement_type=InvolvementType.OPENING,
                     cashflow_type=CashflowType.OUTFLOW,
                     reason=CashflowReason.FEE,
@@ -298,9 +316,10 @@ class BasePerpetualBalanceEngine(BalanceEngine):
 
         # Fee deducted from returns
         if order_details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
+            fee_asset = cls._get_expected_fee_asset(order_details)
             result.append(
                 AssetCashflow(
-                    asset=order_details.fee.asset,
+                    asset=fee_asset,
                     involvement_type=InvolvementType.CLOSING,
                     cashflow_type=CashflowType.OUTFLOW,
                     reason=CashflowReason.FEE,

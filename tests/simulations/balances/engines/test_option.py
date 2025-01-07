@@ -130,7 +130,7 @@ def sell_order_details(
         position_action=PositionAction.OPEN,
         index_price=Decimal("50000"),
         fee=OperationFee(
-            asset=quote_asset,
+            asset=None,
             amount=Decimal("0.1"),
             fee_type=FeeType.PERCENTAGE,
             impact_type=FeeImpactType.ADDED_TO_COSTS,
@@ -157,7 +157,7 @@ def inverse_buy_order_details(
         position_action=PositionAction.OPEN,
         index_price=Decimal("50000"),
         fee=OperationFee(
-            asset=base_asset,
+            asset=None,
             amount=Decimal("0.1"),
             fee_type=FeeType.PERCENTAGE,
             impact_type=FeeImpactType.ADDED_TO_COSTS,
@@ -165,13 +165,16 @@ def inverse_buy_order_details(
     )
 
 
-def test_regular_option_fee_absolute(buy_order_details: OrderDetails) -> None:
+def test_regular_option_fee_absolute(
+    buy_order_details: OrderDetails, quote_asset: Asset
+) -> None:
     """Test absolute fee calculation for regular options."""
+    buy_order_details.fee.asset = quote_asset
     buy_order_details.fee.fee_type = FeeType.ABSOLUTE
     buy_order_details.fee.amount = Decimal("10")
     fee_impact = OptionBalanceEngine._get_fee_impact(buy_order_details)
     assert len(fee_impact) == 1
-    assert fee_impact[buy_order_details.fee.asset] == Decimal("10")
+    assert fee_impact[quote_asset] == Decimal("10")
 
 
 def test_regular_option_fee_percentage_quote_currency(
@@ -194,14 +197,16 @@ def test_regular_option_fee_percentage_base_currency(
 
 
 def test_inverse_option_fee_absolute(
-    inverse_buy_order_details: OrderDetails,
+    inverse_buy_order_details: OrderDetails, base_asset: Asset
 ) -> None:
     """Test absolute fee calculation for inverse options."""
+    inverse_buy_order_details.fee.asset = base_asset
     inverse_buy_order_details.fee.fee_type = FeeType.ABSOLUTE
     inverse_buy_order_details.fee.amount = Decimal("0.001")
     fee_impact = InverseOptionBalanceEngine._get_fee_impact(inverse_buy_order_details)
     assert len(fee_impact) == 1
-    assert fee_impact[inverse_buy_order_details.fee.asset] == Decimal("0.001")
+    assert base_asset in fee_impact
+    assert fee_impact[base_asset] == Decimal("0.001")
 
 
 def test_inverse_option_fee_percentage_base_currency(
@@ -271,7 +276,9 @@ def test_inverse_option_fee_deducted_from_returns(
     assert outflows[0].amount == Decimal("0.00002")  # 0.1% of 0.02 BTC
 
 
-def test_get_involved_assets_open_buy(buy_order_details: OrderDetails) -> None:
+def test_get_involved_assets_open_buy(
+    buy_order_details: OrderDetails, quote_asset: Asset
+) -> None:
     """Test getting involved assets for opening long option position."""
     assets = OptionBalanceEngine.get_involved_assets(buy_order_details)
 
@@ -282,7 +289,7 @@ def test_get_involved_assets_open_buy(buy_order_details: OrderDetails) -> None:
     assert len(assets) == 3
 
     # Check premium payment
-    assert assets[0].asset == buy_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.OPENING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
     assert assets[0].reason == CashflowReason.OPERATION
@@ -299,14 +306,14 @@ def test_get_involved_assets_open_buy(buy_order_details: OrderDetails) -> None:
     assert assets[1].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[2].asset == buy_order_details.fee.asset
+    assert assets[2].asset == quote_asset
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.OUTFLOW
     assert assets[2].reason == CashflowReason.FEE
 
 
 def test_get_involved_assets_open_sell(
-    sell_order_details: OrderDetails,
+    sell_order_details: OrderDetails, quote_asset: Asset
 ) -> None:
     """Test getting involved assets for opening short option position."""
     assets = OptionBalanceEngine.get_involved_assets(sell_order_details)
@@ -319,13 +326,13 @@ def test_get_involved_assets_open_sell(
     assert len(assets) == 4
 
     # Check margin lock
-    assert assets[0].asset == sell_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.OPENING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
     assert assets[0].reason == CashflowReason.OPERATION
 
     # Check premium receipt
-    assert assets[1].asset == sell_order_details.fee.asset  # USDT
+    assert assets[1].asset == quote_asset  # USDT
     assert assets[1].involvement_type == InvolvementType.OPENING
     assert assets[1].cashflow_type == CashflowType.INFLOW
     assert assets[1].reason == CashflowReason.OPERATION
@@ -342,7 +349,7 @@ def test_get_involved_assets_open_sell(
     assert assets[2].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[3].asset == sell_order_details.fee.asset
+    assert assets[3].asset == quote_asset
     assert assets[3].involvement_type == InvolvementType.OPENING
     assert assets[3].cashflow_type == CashflowType.OUTFLOW
     assert assets[3].reason == CashflowReason.FEE
@@ -356,7 +363,7 @@ def close_buy_order_details(buy_order_details: OrderDetails) -> OrderDetails:
 
 
 def test_get_involved_assets_close_buy(
-    close_buy_order_details: OrderDetails,
+    close_buy_order_details: OrderDetails, quote_asset: Asset
 ) -> None:
     """Test getting involved assets for closing short option position by buying."""
     assets = OptionBalanceEngine.get_involved_assets(close_buy_order_details)
@@ -369,13 +376,13 @@ def test_get_involved_assets_close_buy(
     assert len(assets) == 4
 
     # Check settlement payment
-    assert assets[0].asset == close_buy_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.CLOSING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
     assert assets[0].reason == CashflowReason.OPERATION
 
     # Check margin return
-    assert assets[1].asset == close_buy_order_details.fee.asset  # USDT
+    assert assets[1].asset == quote_asset  # USDT
     assert assets[1].involvement_type == InvolvementType.CLOSING
     assert assets[1].cashflow_type == CashflowType.INFLOW
     assert assets[1].reason == CashflowReason.OPERATION
@@ -392,7 +399,7 @@ def test_get_involved_assets_close_buy(
     assert assets[2].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[3].asset == close_buy_order_details.fee.asset
+    assert assets[3].asset == quote_asset
     assert assets[3].involvement_type == InvolvementType.OPENING
     assert assets[3].cashflow_type == CashflowType.OUTFLOW
     assert assets[3].reason == CashflowReason.FEE
@@ -406,7 +413,7 @@ def close_sell_order_details(sell_order_details: OrderDetails) -> OrderDetails:
 
 
 def test_get_involved_assets_close_sell(
-    close_sell_order_details: OrderDetails,
+    close_sell_order_details: OrderDetails, quote_asset: Asset
 ) -> None:
     """Test getting involved assets for closing long option position by selling."""
     assets = OptionBalanceEngine.get_involved_assets(close_sell_order_details)
@@ -418,7 +425,7 @@ def test_get_involved_assets_close_sell(
     assert len(assets) == 3
 
     # Check settlement receipt
-    assert assets[0].asset == close_sell_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.CLOSING
     assert assets[0].cashflow_type == CashflowType.INFLOW
     assert assets[0].reason == CashflowReason.PNL
@@ -435,7 +442,7 @@ def test_get_involved_assets_close_sell(
     assert assets[1].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[2].asset == close_sell_order_details.fee.asset
+    assert assets[2].asset == quote_asset
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.OUTFLOW
     assert assets[2].reason == CashflowReason.FEE
@@ -448,7 +455,9 @@ def flip_buy_order_details(buy_order_details: OrderDetails) -> OrderDetails:
     return buy_order_details
 
 
-def test_get_involved_assets_flip_buy(flip_buy_order_details: OrderDetails) -> None:
+def test_get_involved_assets_flip_buy(
+    flip_buy_order_details: OrderDetails, quote_asset: Asset
+) -> None:
     """Test getting involved assets for flipping from short to long position."""
     assets = OptionBalanceEngine.get_involved_assets(flip_buy_order_details)
 
@@ -462,19 +471,19 @@ def test_get_involved_assets_flip_buy(flip_buy_order_details: OrderDetails) -> N
     assert len(assets) == 6
 
     # Check settlement payment
-    assert assets[0].asset == flip_buy_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.CLOSING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
     assert assets[0].reason == CashflowReason.OPERATION
 
     # Check margin return
-    assert assets[1].asset == flip_buy_order_details.fee.asset  # USDT
+    assert assets[1].asset == quote_asset  # USDT
     assert assets[1].involvement_type == InvolvementType.CLOSING
     assert assets[1].cashflow_type == CashflowType.INFLOW
     assert assets[1].reason == CashflowReason.OPERATION
 
     # Check premium payment
-    assert assets[2].asset == flip_buy_order_details.fee.asset  # USDT
+    assert assets[2].asset == quote_asset  # USDT
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.OUTFLOW
     assert assets[2].reason == CashflowReason.OPERATION
@@ -502,7 +511,7 @@ def test_get_involved_assets_flip_buy(flip_buy_order_details: OrderDetails) -> N
     assert assets[4].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[5].asset == flip_buy_order_details.fee.asset
+    assert assets[5].asset == quote_asset
     assert assets[5].involvement_type == InvolvementType.OPENING
     assert assets[5].cashflow_type == CashflowType.OUTFLOW
     assert assets[5].reason == CashflowReason.FEE
@@ -515,7 +524,9 @@ def flip_sell_order_details(sell_order_details: OrderDetails) -> OrderDetails:
     return sell_order_details
 
 
-def test_get_involved_assets_flip_sell(flip_sell_order_details: OrderDetails) -> None:
+def test_get_involved_assets_flip_sell(
+    flip_sell_order_details: OrderDetails, quote_asset: Asset
+) -> None:
     """Test getting involved assets for flipping from long to short position."""
     assets = OptionBalanceEngine.get_involved_assets(flip_sell_order_details)
 
@@ -529,18 +540,18 @@ def test_get_involved_assets_flip_sell(flip_sell_order_details: OrderDetails) ->
     assert len(assets) == 6
 
     # Check settlement receipt
-    assert assets[0].asset == flip_sell_order_details.fee.asset  # USDT
+    assert assets[0].asset == quote_asset  # USDT
     assert assets[0].involvement_type == InvolvementType.CLOSING
     assert assets[0].cashflow_type == CashflowType.INFLOW
     assert assets[0].reason == CashflowReason.PNL
 
     # Check margin lock and premium receipt
-    assert assets[1].asset == flip_sell_order_details.fee.asset  # USDT
+    assert assets[1].asset == quote_asset  # USDT
     assert assets[1].involvement_type == InvolvementType.OPENING
     assert assets[1].cashflow_type == CashflowType.OUTFLOW
     assert assets[1].reason == CashflowReason.OPERATION
 
-    assert assets[2].asset == flip_sell_order_details.fee.asset  # USDT
+    assert assets[2].asset == quote_asset  # USDT
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.INFLOW
     assert assets[2].reason == CashflowReason.OPERATION
@@ -568,7 +579,7 @@ def test_get_involved_assets_flip_sell(flip_sell_order_details: OrderDetails) ->
     assert assets[4].reason == CashflowReason.OPERATION
 
     # Check fee
-    assert assets[5].asset == flip_sell_order_details.fee.asset
+    assert assets[5].asset == quote_asset
     assert assets[5].involvement_type == InvolvementType.OPENING
     assert assets[5].cashflow_type == CashflowType.OUTFLOW
     assert assets[5].reason == CashflowReason.FEE

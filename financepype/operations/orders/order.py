@@ -76,7 +76,7 @@ class TradeUpdate(BaseModel):
         )
 
     @property
-    def fee_asset(self) -> Asset:  # Type depends on the asset implementation
+    def fee_asset(self) -> Asset | None:  # Type depends on the asset implementation
         return self.fee.asset
 
     @property
