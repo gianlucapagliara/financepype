@@ -6,10 +6,6 @@ from financepype.assets.contract import DerivativeSide
 class OrderType(Enum):
     MARKET = "MARKET"
     LIMIT = "LIMIT"
-    LIMIT_MAKER = "LIMIT_MAKER"
-
-    def is_limit_type(self) -> bool:
-        return self in (OrderType.LIMIT, OrderType.LIMIT_MAKER)
 
 
 class OrderModifier(Enum):

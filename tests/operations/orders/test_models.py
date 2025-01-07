@@ -2,19 +2,11 @@ import pytest
 
 from financepype.operations.orders.models import (
     OrderModifier,
-    OrderType,
     PositionAction,
     PositionMode,
     PriceType,
     TradeType,
 )
-
-
-def test_order_type() -> None:
-    """Test OrderType enum."""
-    assert OrderType.LIMIT.is_limit_type() is True
-    assert OrderType.MARKET.is_limit_type() is False
-    assert OrderType.LIMIT_MAKER.is_limit_type() is True
 
 
 def test_order_modifier() -> None:

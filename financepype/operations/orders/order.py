@@ -24,13 +24,12 @@ GET_EX_ORDER_ID_TIMEOUT = 10  # seconds
 
 
 class OrderState(Enum):
-    PENDING_CREATE = 0  # Initial state -> waiting for exchange to create order (order not yet in order book)
-    OPEN = 1  # Ready to be filled
-    PENDING_CANCEL = 2  # User requested cancellation of order -> waiting for confirmation from exchange
-    CANCELED = 3  # Order was cancelled by user
-    PARTIALLY_FILLED = 4  # Order partially filled -> still open
-    FILLED = 5  # Order completely filled -> completed
-    FAILED = 6  # Order failed to be created by the exchange
+    PENDING_CREATE = "pending_create"  # Initial state -> waiting for exchange to create order (order not yet in order book)
+    OPEN = "open"  # Ready to be filled
+    PENDING_CANCEL = "pending_cancel"  # User requested cancellation of order -> waiting for confirmation from exchange
+    CANCELED = "canceled"  # Order was cancelled by user
+    FILLED = "filled"  # Order completely filled -> completed
+    FAILED = "failed"  # Order failed to be created by the exchange
 
 
 class OrderUpdate(BaseModel):
@@ -40,7 +39,7 @@ class OrderUpdate(BaseModel):
     including new state, timestamps, and identifiers.
     """
 
-    trading_pair: str
+    trading_pair: TradingPair
     update_timestamp: float  # seconds
     new_state: OrderState
     client_order_id: str | None = None
@@ -164,7 +163,7 @@ class OrderOperation(Operation):
 
     @property
     def is_limit(self) -> bool:
-        return self.order_type.is_limit_type()
+        return self.order_type == OrderType.LIMIT
 
     @property
     def is_market(self) -> bool:
@@ -204,7 +203,6 @@ class OrderOperation(Operation):
         return self.current_state in {
             OrderState.PENDING_CREATE,
             OrderState.OPEN,
-            OrderState.PARTIALLY_FILLED,
             OrderState.PENDING_CANCEL,
         }
 
@@ -247,8 +245,8 @@ class OrderOperation(Operation):
 
     def _update_with_order_update(self, order_update: OrderUpdate) -> bool:
         """Update the in flight order with an order update (from REST API or WS API)."""
-        if (
-            order_update.client_order_id != self.client_operation_id
+        if order_update.client_order_id != self.client_operation_id or (
+            self.operator_operation_id is not None
             and order_update.exchange_order_id != self.operator_operation_id
         ):
             return False
@@ -261,14 +259,40 @@ class OrderOperation(Operation):
         ):
             self.update_operator_operation_id(order_update.exchange_order_id)
 
-        if self.is_open:
-            self.current_state = order_update.new_state
+        # Check if the state transition is valid
+        valid = self.is_valid_state_transition(order_update)
+        if not valid:
+            return False
+        self.current_state = order_update.new_state
 
         updated = prev_state != self.current_state
         if updated:
             self.last_update_timestamp = order_update.update_timestamp
 
         return updated
+
+    def is_valid_state_transition(self, order_update: OrderUpdate) -> bool:
+        if self.is_pending_create:
+            if order_update.new_state not in {OrderState.OPEN, OrderState.FAILED}:
+                return False
+        elif self.is_open:
+            if order_update.new_state not in {
+                OrderState.OPEN,
+                OrderState.PENDING_CANCEL,
+                OrderState.CANCELED,
+                OrderState.FILLED,
+            }:
+                return False
+        elif self.is_pending_cancel_confirmation:
+            if order_update.new_state not in {
+                OrderState.CANCELED,
+                OrderState.OPEN,
+                OrderState.FILLED,
+            }:
+                return False
+        else:
+            return False
+        return True
 
     def _update_with_trade_update(self, trade_update: TradeUpdate) -> bool:
         """Update the in flight order with a trade update (from REST API or WS API)."""
@@ -293,8 +317,6 @@ class OrderOperation(Operation):
             or self.executed_amount_base >= self.amount
         ):
             self.current_state = OrderState.FILLED
-        elif self.executed_amount_base > 0:
-            self.current_state = OrderState.PARTIALLY_FILLED
 
         self.check_filled_condition()
 

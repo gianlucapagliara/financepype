@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_valid
 
 from financepype.constants import s_decimal_0, s_decimal_max, s_decimal_min
 from financepype.markets.trading_pair import TradingPair
+from financepype.operations.orders.models import OrderModifier, OrderType
 
 
 class TradingRule(BaseModel):
@@ -66,8 +67,12 @@ class TradingRule(BaseModel):
     min_quote_amount_increment: Decimal = Field(default=s_decimal_min)
     min_notional_size: Decimal = Field(default=s_decimal_0)
     max_notional_size: Decimal = Field(default=s_decimal_max)
-    supports_limit_orders: bool = Field(default=True)
-    supports_market_orders: bool = Field(default=True)
+    supported_order_types: set[OrderType] = Field(
+        default_factory=lambda: {OrderType.LIMIT, OrderType.MARKET}
+    )
+    supported_order_modifiers: set[OrderModifier] = Field(
+        default_factory=lambda: {OrderModifier.POST_ONLY}
+    )
     buy_order_collateral_token: str | None = None
     sell_order_collateral_token: str | None = None
     product_id: str | None = None
@@ -149,6 +154,14 @@ class TradingRule(BaseModel):
             bool: True for spot trading (always active)
         """
         return True
+
+    @property
+    def supports_limit_orders(self) -> bool:
+        return OrderType.LIMIT in self.supported_order_types
+
+    @property
+    def supports_market_orders(self) -> bool:
+        return OrderType.MARKET in self.supported_order_types
 
 
 class DerivativeTradingRule(TradingRule):

@@ -35,7 +35,6 @@ def create_sample_order(
             min_order_size=Decimal("0.0001"),
             min_price_increment=Decimal("0.01"),
             min_notional_size=Decimal("10"),
-            supports_market_orders=True,
         )
     else:
         trading_rule = DerivativeTradingRule(
@@ -43,7 +42,6 @@ def create_sample_order(
             min_order_size=Decimal("0.0001"),
             min_price_increment=Decimal("0.01"),
             min_notional_size=Decimal("10"),
-            supports_market_orders=True,
         )
 
     return OrderDetails(

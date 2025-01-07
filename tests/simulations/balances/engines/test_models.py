@@ -25,7 +25,6 @@ def trading_rule(platform: Platform) -> TradingRule:
         min_order_size=Decimal("0.0001"),
         min_price_increment=Decimal("0.01"),
         min_notional_size=Decimal("10"),
-        supports_market_orders=True,
     )
 
 

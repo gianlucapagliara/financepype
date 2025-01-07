@@ -92,7 +92,7 @@ def test_order_operation_properties(test_order: OrderOperation) -> None:
 def test_order_operation_update_with_order_update(test_order: OrderOperation) -> None:
     """Test OrderOperation update with OrderUpdate."""
     update = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995300.0,
         new_state=OrderState.OPEN,
         client_order_id="test_order_1",
@@ -112,7 +112,7 @@ def test_order_operation_update_with_trade_update(
     """Test OrderOperation update with TradeUpdate."""
     # First set the order to OPEN state
     open_update = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995300.0,
         new_state=OrderState.OPEN,
         client_order_id="test_order_1",
@@ -145,7 +145,7 @@ def test_order_operation_update_with_trade_update(
     assert result is True
     assert test_order.executed_amount_base == Decimal("0.5")
     assert test_order.executed_amount_quote == Decimal("25000")
-    assert test_order.current_state == OrderState.PARTIALLY_FILLED
+    assert test_order.current_state == OrderState.OPEN
     assert test_order.last_update_timestamp == 1640995400.0
     assert test_order.average_executed_price == Decimal("50000")
 
@@ -156,7 +156,7 @@ def test_order_operation_complete_fill(
     """Test OrderOperation complete fill process."""
     # Set the order to OPEN state
     open_update = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995300.0,
         new_state=OrderState.OPEN,
         client_order_id="test_order_1",
@@ -200,7 +200,7 @@ def test_order_operation_cancellation(test_order: OrderOperation) -> None:
     """Test OrderOperation cancellation process."""
     # First set the order to OPEN state
     open_update = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995300.0,
         new_state=OrderState.OPEN,
         client_order_id="test_order_1",
@@ -210,7 +210,7 @@ def test_order_operation_cancellation(test_order: OrderOperation) -> None:
 
     # Request cancellation
     cancel_request = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995400.0,
         new_state=OrderState.PENDING_CANCEL,
         client_order_id="test_order_1",
@@ -224,7 +224,7 @@ def test_order_operation_cancellation(test_order: OrderOperation) -> None:
 
     # Confirm cancellation
     cancel_confirm = OrderUpdate(
-        trading_pair="BTC-USDT",
+        trading_pair=test_order.trading_pair,
         update_timestamp=1640995500.0,
         new_state=OrderState.CANCELED,
         client_order_id="test_order_1",
