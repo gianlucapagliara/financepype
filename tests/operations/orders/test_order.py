@@ -58,6 +58,7 @@ def test_order(
         price=Decimal("50000"),
         creation_timestamp=1640995200.0,
         owner_identifier=test_owner_id,
+        current_state=OrderState.PENDING_CREATE,
     )
 
 

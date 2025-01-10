@@ -79,7 +79,7 @@ def order_details(
         trade_type=TradeType.BUY,
         order_type=OrderType.LIMIT,
         position_action=PositionAction.OPEN,
-        index_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         entry_price=Decimal("50000"),
         exit_price=None,
         fee=OperationFee(
@@ -111,17 +111,15 @@ def test_inverse_get_outflow_asset(
 def test_perpetual_calculate_margin(order_details: OrderDetails) -> None:
     """Test margin calculation for regular perpetual."""
     # (amount * price) / leverage = (1 * 50000) / 10 = 5000
-    assert TestPerpetualBalanceEngine._calculate_margin(order_details) == Decimal(
-        "5000"
-    )
+    assert TestPerpetualBalanceEngine._get_margin(order_details) == Decimal("5000")
 
 
 def test_inverse_calculate_margin(order_details: OrderDetails) -> None:
     """Test margin calculation for inverse perpetual."""
     # amount / (leverage * price) = 1 / (10 * 50000) = 0.000002
-    assert TestInversePerpetualBalanceEngine._calculate_margin(
-        order_details
-    ) == Decimal("0.000002")
+    assert TestInversePerpetualBalanceEngine._get_margin(order_details) == Decimal(
+        "0.000002"
+    )
 
 
 def test_perpetual_calculate_pnl_long_profit(order_details: OrderDetails) -> None:

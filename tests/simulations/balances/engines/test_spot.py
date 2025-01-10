@@ -69,7 +69,7 @@ def buy_order_details(
         trade_type=TradeType.BUY,
         order_type=OrderType.LIMIT,
         position_action=PositionAction.OPEN,
-        index_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         fee=OperationFee(
             asset=None,
             amount=Decimal("0.1"),
@@ -96,7 +96,7 @@ def sell_order_details(
         trade_type=TradeType.SELL,
         order_type=OrderType.LIMIT,
         position_action=PositionAction.OPEN,
-        index_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         fee=OperationFee(
             asset=None,
             amount=Decimal("0.1"),

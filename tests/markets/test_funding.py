@@ -58,14 +58,14 @@ def test_funding_payment_type_values() -> None:
 def test_funding_info_update_initialization() -> None:
     """Test successful initialization of FundingInfoUpdate with valid data."""
     update = FundingInfoUpdate(
-        trading_pair="BTC-USD",
+        trading_pair=TradingPair(name="BTC-USD"),
         index_price=Decimal("50000.00"),
         mark_price=Decimal("50100.00"),
         next_funding_utc_timestamp=int(time()) + 3600,
         next_funding_rate=Decimal("0.001"),
         last_funding_rate=Decimal("0.0008"),
     )
-    assert update.trading_pair == "BTC-USD"
+    assert update.trading_pair.name == "BTC-USD"
     assert update.index_price == Decimal("50000.00")
     assert update.mark_price == Decimal("50100.00")
     assert update.next_funding_rate == Decimal("0.001")
@@ -129,7 +129,7 @@ def test_funding_info_update(funding_info: FundingInfo) -> None:
         else 0
     )
     update = FundingInfoUpdate(
-        trading_pair="BTC-USD",
+        trading_pair=TradingPair(name="BTC-USD"),
         index_price=Decimal("51000.00"),
         mark_price=Decimal("51100.00"),
         next_funding_utc_timestamp=next_timestamp + 3600,

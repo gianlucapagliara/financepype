@@ -29,7 +29,7 @@ def test_derivative_trading_pair() -> None:
     assert pair.base == "BTC"
     assert pair.quote == "USD"
     assert pair.instrument_type == InstrumentType.PERPETUAL
-    assert pair.instrument_info.is_derivative
+    assert pair.market_info.is_derivative
 
 
 def test_option_trading_pair() -> None:
@@ -37,4 +37,4 @@ def test_option_trading_pair() -> None:
     assert pair.base == "BTC"
     assert pair.quote == "USD"
     assert pair.instrument_type == InstrumentType.CALL_OPTION
-    assert pair.instrument_info.is_option
+    assert pair.market_info.is_option

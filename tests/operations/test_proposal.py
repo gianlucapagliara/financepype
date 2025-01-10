@@ -24,6 +24,7 @@ class MockOperation(Operation):
                 name="test_owner", platform=Platform(identifier="test")
             ),
             creation_timestamp=current_time,
+            current_state=None,
             other_data={"purpose": purpose},
         )
 

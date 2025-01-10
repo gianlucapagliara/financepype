@@ -86,7 +86,7 @@ def mock_order_details(
         price=Decimal("100"),
         leverage=1,
         position_action=PositionAction.OPEN,
-        index_price=Decimal("100"),
+        entry_index_price=Decimal("100"),
         fee=mock_fee,
     )
 

@@ -42,7 +42,7 @@ def order_details(
         price=Decimal("50000"),
         leverage=1,
         position_action=PositionAction.OPEN,
-        index_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         fee=OperationFee(
             asset=btc_asset,
             amount=Decimal("0.1"),
@@ -82,7 +82,7 @@ def test_order_details_validation(
             price=Decimal("50000"),
             leverage=1,
             position_action=PositionAction.OPEN,
-            index_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
             fee=OperationFee(
                 asset=btc_asset,
                 amount=Decimal("0.1"),

@@ -29,6 +29,7 @@ class MockOperation(Operation):
                 name="test_owner", platform=Platform(identifier="test")
             ),
             creation_timestamp=current_time,
+            current_state=None,
         )
 
     def process_operation_update(self, update: Any) -> bool:

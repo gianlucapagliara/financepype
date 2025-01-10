@@ -40,6 +40,7 @@ def long_position(long_contract: DerivativeContract) -> Position:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("100"),
         liquidation_price=Decimal("45000"),
@@ -53,6 +54,7 @@ def short_position(short_contract: DerivativeContract) -> Position:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("-100"),
         liquidation_price=Decimal("55000"),
@@ -65,6 +67,7 @@ def test_position_initialization(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("45000"),
@@ -86,6 +89,7 @@ def test_position_validation(long_contract: DerivativeContract) -> None:
             amount=Decimal("0"),
             leverage=Decimal("2"),
             entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
             margin=Decimal("1000"),
             unrealized_pnl=Decimal("0"),
             liquidation_price=Decimal("45000"),
@@ -98,6 +102,7 @@ def test_position_validation(long_contract: DerivativeContract) -> None:
             amount=Decimal("0.1"),
             leverage=Decimal("0"),
             entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
             margin=Decimal("1000"),
             unrealized_pnl=Decimal("0"),
             liquidation_price=Decimal("45000"),
@@ -110,6 +115,7 @@ def test_position_validation(long_contract: DerivativeContract) -> None:
             amount=Decimal("0.1"),
             leverage=Decimal("2"),
             entry_price=Decimal("0"),
+            entry_index_price=Decimal("50000"),
             margin=Decimal("1000"),
             unrealized_pnl=Decimal("0"),
             liquidation_price=Decimal("45000"),
@@ -122,6 +128,7 @@ def test_position_validation(long_contract: DerivativeContract) -> None:
             amount=Decimal("0.1"),
             leverage=Decimal("2"),
             entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
             margin=Decimal("-1"),
             unrealized_pnl=Decimal("0"),
             liquidation_price=Decimal("45000"),
@@ -135,6 +142,7 @@ def test_liquidation_price_validation(long_contract: DerivativeContract) -> None
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("-1"),
@@ -182,6 +190,7 @@ def test_percentage_from_liquidation(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("100"),
         liquidation_price=Decimal("45000"),
@@ -196,6 +205,7 @@ def test_percentage_from_liquidation(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("100"),
         liquidation_price=s_decimal_0,
@@ -241,6 +251,7 @@ def test_negative_unrealized_pnl_percentage(short_contract: DerivativeContract) 
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("-500"),  # 50% loss
         liquidation_price=Decimal("55000"),
@@ -257,6 +268,7 @@ def test_margin_percentage_from_liquidation_with_negative_pnl(
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("-900"),  # 90% loss
         liquidation_price=Decimal("55000"),
@@ -291,6 +303,7 @@ def test_high_leverage_position(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("100"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("50"),  # 5000/100
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("49500"),  # Close to entry due to high leverage
@@ -318,6 +331,7 @@ def test_zero_margin_validation(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("0"),
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("45000"),
@@ -332,6 +346,7 @@ def test_unrealized_pnl_with_zero_margin(long_contract: DerivativeContract) -> N
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("0"),
         unrealized_pnl=Decimal("100"),
         liquidation_price=Decimal("45000"),
@@ -348,6 +363,7 @@ def test_margin_percentage_with_zero_margin(long_contract: DerivativeContract) -
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("0"),
         unrealized_pnl=Decimal("100"),
         liquidation_price=Decimal("45000"),
@@ -364,6 +380,7 @@ def test_extreme_values(long_contract: DerivativeContract) -> None:
         amount=Decimal("999999.99999"),  # Very large amount
         leverage=Decimal("1000"),  # Very high leverage
         entry_price=Decimal("999999.99999"),  # Very high price
+        entry_index_price=Decimal("999999.99999"),
         margin=Decimal("0.00001"),  # Very small margin
         unrealized_pnl=Decimal("-0.00001"),  # Very small negative PnL
         liquidation_price=Decimal("999998.99999"),  # Very close to entry price
@@ -381,6 +398,7 @@ def test_liquidation_risk_edge_cases(long_contract: DerivativeContract) -> None:
         amount=Decimal("0.1"),
         leverage=Decimal("2"),
         entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
         margin=Decimal("1000"),
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("45000"),
@@ -413,6 +431,7 @@ def test_model_validation(long_contract: DerivativeContract) -> None:
             amount=Decimal("-0.1"),  # Invalid: negative amount
             leverage=Decimal("-2"),  # Invalid: negative leverage
             entry_price=Decimal("-50000"),  # Invalid: negative entry price
+            entry_index_price=Decimal("50000"),
             margin=Decimal("-1000"),  # Invalid: negative margin
             unrealized_pnl=Decimal("0"),
             liquidation_price=Decimal("-45000"),  # Will be converted to 0

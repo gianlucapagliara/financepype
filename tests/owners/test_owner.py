@@ -4,7 +4,7 @@ import pytest
 
 from financepype.assets.asset import Asset
 from financepype.assets.spot import SpotAsset
-from financepype.owners.owner import Owner
+from financepype.owners.owner import Owner, OwnerConfiguration
 from financepype.owners.owner_id import OwnerIdentifier
 from financepype.platforms.platform import Platform
 
@@ -12,9 +12,7 @@ from financepype.platforms.platform import Platform
 class MockOwner(Owner):
     """Mock owner class for testing that implements the required abstract methods."""
 
-    def check_network(self) -> None:
-        """Mock implementation of check_network."""
-        pass
+    pass
 
 
 @pytest.fixture
@@ -24,7 +22,7 @@ def owner_id(platform: Platform) -> OwnerIdentifier:
 
 @pytest.fixture
 def owner(owner_id: OwnerIdentifier) -> Owner:
-    return MockOwner(identifier=owner_id)
+    return MockOwner(configuration=OwnerConfiguration(identifier=owner_id))
 
 
 def test_owner_init(owner: Owner, owner_id: OwnerIdentifier) -> None:
@@ -32,11 +30,6 @@ def test_owner_init(owner: Owner, owner_id: OwnerIdentifier) -> None:
     assert owner.name == "test_trader"
     assert owner.platform.identifier == "test_platform"
     assert owner.balance_tracker is not None
-
-
-def test_owner_status_and_ready(owner: Owner) -> None:
-    assert owner.status_dict == {}
-    assert owner.ready is True  # Empty status_dict means all conditions are met
 
 
 def test_owner_get_balances(

@@ -10,7 +10,7 @@ from financepype.markets.market import (
 )
 
 
-def test_spot_instrument_info() -> None:
+def test_spot_market_info() -> None:
     info = MarketInfo(base="BTC", quote="USD", instrument_type=InstrumentType.SPOT)
     assert info.base == "BTC"
     assert info.quote == "USD"
@@ -18,14 +18,14 @@ def test_spot_instrument_info() -> None:
     assert not info.instrument_type.is_derivative
 
 
-def test_perpetual_instrument_info() -> None:
+def test_perpetual_market_info() -> None:
     info = MarketInfo(base="BTC", quote="USD", instrument_type=InstrumentType.PERPETUAL)
     assert info.is_derivative
     assert info.is_perpetual
     assert not info.is_option
 
 
-def test_option_instrument_info() -> None:
+def test_option_market_info() -> None:
     expiry = datetime(2024, 1, 1)
     info = MarketInfo(
         base="BTC",

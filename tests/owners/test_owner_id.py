@@ -28,7 +28,7 @@ def test_owner_identifier_equality() -> None:
     # Different name should not be equal
     assert owner1 != owner4
     # Different type should not be equal
-    assert owner1 != "not_an_owner"
+    assert owner1 != "not_an_owner"  # type: ignore[comparison-overlap]
 
 
 def test_owner_identifier_hash() -> None:
