@@ -149,6 +149,15 @@ class BaseOptionBalanceEngine(BalanceEngine):
         raise ValueError(f"Unsupported fee type: {order_details.fee.fee_type}")
 
     @classmethod
+    def _get_margin(cls, order_details: OrderDetails) -> Decimal:
+        """Get the margin for the option."""
+        return (
+            order_details.margin
+            if order_details.margin is not None
+            else cls._calculate_margin(order_details)
+        )
+
+    @classmethod
     @abstractmethod
     def _calculate_premium(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the option premium.
@@ -423,7 +432,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
                 )
             else:
                 # Short option: margin requirement
-                margin = cls._calculate_margin(order_details)
+                margin = cls._get_margin(order_details)
                 result.append(
                     AssetCashflow(
                         asset=collateral_asset,
@@ -525,7 +534,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         if order_details.position_action == PositionAction.CLOSE:
             if order_details.trade_type == TradeType.BUY:
                 # Closing short: return of remaining margin
-                margin = cls._calculate_margin(order_details)
+                margin = cls._get_margin(order_details)
                 result.append(
                     AssetCashflow(
                         asset=collateral_asset,
@@ -634,13 +643,14 @@ class OptionBalanceEngine(BaseOptionBalanceEngine):
         - Time to expiry
         - Strike distance from current price
         """
-        instrument_info = order_details.trading_pair.instrument_info
-
         # Get option type
-        is_call = instrument_info.instrument_type == InstrumentType.CALL_OPTION
+        is_call = (
+            order_details.trading_pair.market_info.instrument_type
+            == InstrumentType.CALL_OPTION
+        )
 
         # Get strike price
-        strike_price = instrument_info.strike_price
+        strike_price = order_details.trading_pair.market_info.strike_price
         if strike_price is None:
             raise ValueError("Strike price not specified in instrument info")
 
@@ -648,7 +658,7 @@ class OptionBalanceEngine(BaseOptionBalanceEngine):
         premium = order_details.amount * order_details.price
 
         # Get current price and contract size
-        current_price = order_details.index_price
+        current_price = order_details.entry_index_price
         contract_size = order_details.amount
 
         # Get margin ratio from trading rules (default to 10% if not specified)
@@ -688,13 +698,14 @@ class OptionBalanceEngine(BaseOptionBalanceEngine):
         - Calls: max(0, spot_price - strike_price) * contract_size
         - Puts: max(0, strike_price - spot_price) * contract_size
         """
-        instrument_info = order_details.trading_pair.instrument_info
-
         # Get option type
-        is_call = instrument_info.instrument_type == InstrumentType.CALL_OPTION
+        is_call = (
+            order_details.trading_pair.market_info.instrument_type
+            == InstrumentType.CALL_OPTION
+        )
 
         # Get strike price
-        strike_price = instrument_info.strike_price
+        strike_price = order_details.trading_pair.market_info.strike_price
         if strike_price is None:
             raise ValueError("Strike price not specified in instrument info")
 
@@ -770,7 +781,7 @@ class InverseOptionBalanceEngine(BaseOptionBalanceEngine):
         premium_btc = (premium_usd * contract_value) / entry_price
         """
         premium_usd = order_details.amount * order_details.price
-        entry_price = order_details.index_price
+        entry_price = order_details.entry_index_price
         return premium_usd / entry_price
 
     @classmethod
@@ -786,13 +797,14 @@ class InverseOptionBalanceEngine(BaseOptionBalanceEngine):
         - Time to expiry
         - Strike distance from current price
         """
-        instrument_info = order_details.trading_pair.instrument_info
-
         # Get option type
-        is_call = instrument_info.instrument_type == InstrumentType.INVERSE_CALL_OPTION
+        is_call = (
+            order_details.trading_pair.market_info.instrument_type
+            == InstrumentType.INVERSE_CALL_OPTION
+        )
 
         # Get strike price
-        strike_price = instrument_info.strike_price
+        strike_price = order_details.trading_pair.market_info.strike_price
         if strike_price is None:
             raise ValueError("Strike price not specified in instrument info")
 
@@ -800,7 +812,7 @@ class InverseOptionBalanceEngine(BaseOptionBalanceEngine):
         premium = cls._calculate_premium(order_details)
 
         # Get current price and contract value
-        current_price = order_details.index_price
+        current_price = order_details.entry_index_price
         contract_value = order_details.amount  # In USD
 
         # Get margin ratio from trading rules (default to 10% if not specified)
@@ -840,13 +852,14 @@ class InverseOptionBalanceEngine(BaseOptionBalanceEngine):
         - Calls: max(0, (1/strike_price - 1/spot_price)) * contract_value
         - Puts: max(0, (1/spot_price - 1/strike_price)) * contract_value
         """
-        instrument_info = order_details.trading_pair.instrument_info
-
         # Get option type
-        is_call = instrument_info.instrument_type == InstrumentType.INVERSE_CALL_OPTION
+        is_call = (
+            order_details.trading_pair.market_info.instrument_type
+            == InstrumentType.INVERSE_CALL_OPTION
+        )
 
         # Get strike price
-        strike_price = instrument_info.strike_price
+        strike_price = order_details.trading_pair.market_info.strike_price
         if strike_price is None:
             raise ValueError("Strike price not specified in instrument info")
 

@@ -29,7 +29,7 @@ def create_sample_order(
 
     trading_pair_obj = TradingPair(name=trading_pair)
 
-    if trading_pair_obj.instrument_info.is_spot:
+    if trading_pair_obj.market_info.is_spot:
         trading_rule = TradingRule(
             trading_pair=trading_pair_obj,
             min_order_size=Decimal("0.0001"),
@@ -54,7 +54,7 @@ def create_sample_order(
         price=price,
         leverage=1,
         position_action=position_action,
-        index_price=price,
+        entry_index_price=price,
         fee=Fee(
             asset=None,
             fee_type=fee_type,
@@ -133,9 +133,11 @@ def main() -> None:
         trading_pair=trading_pair,
         fee_type=fee_type,
         fee_impact=fee_impact,
-        fee_amount=Decimal(str(fee_amount))
-        if fee_type == FeeType.PERCENTAGE
-        else Decimal(str(fee_amount)),
+        fee_amount=(
+            Decimal(str(fee_amount))
+            if fee_type == FeeType.PERCENTAGE
+            else Decimal(str(fee_amount))
+        ),
     )
 
     # Display order details

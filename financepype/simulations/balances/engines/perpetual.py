@@ -70,7 +70,17 @@ class BasePerpetualBalanceEngine(BalanceEngine):
     - _get_outflow_asset: Define which asset is used for margin/collateral
     - _calculate_pnl: Define PnL calculation logic
     - _calculate_margin: Define margin calculation logic
+    - _calculate_index_price: Define index price calculation logic
     """
+
+    @classmethod
+    def _get_margin(cls, order_details: OrderDetails) -> Decimal:
+        """Get the margin for the perpetual."""
+        return (
+            order_details.margin
+            if order_details.margin is not None
+            else cls._calculate_margin(order_details)
+        )
 
     @classmethod
     @abstractmethod
@@ -276,7 +286,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         collateral_asset = cls._get_outflow_asset(order_details)
 
         # Initial margin
-        margin_amount = cls._calculate_margin(order_details)
+        margin_amount = cls._get_margin(order_details)
         result.append(
             AssetCashflow(
                 asset=collateral_asset,
@@ -352,7 +362,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             )
         elif order_details.position_action == PositionAction.OPEN:
             # For OPEN positions, we return the initial margin plus any PnL
-            margin_amount = cls._calculate_margin(order_details)
+            margin_amount = cls._get_margin(order_details)
             pnl = cls._calculate_pnl(order_details)
             result.append(
                 AssetCashflow(
@@ -522,7 +532,7 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
         margin = contract_value / (leverage * entry_price)
         """
         contract_value = order_details.amount  # In USD
-        entry_price = order_details.index_price
+        entry_price = order_details.entry_index_price
         return contract_value / (Decimal(order_details.leverage) * entry_price)
 
     @classmethod
