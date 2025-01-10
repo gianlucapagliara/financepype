@@ -9,6 +9,22 @@ from financepype.constants import s_decimal_0
 
 
 class CandleTimeframe(Enum):
+    """Enumeration of standard candle timeframes.
+
+    Each timeframe is represented by its duration in seconds:
+    - SEC_1: 1 second
+    - MIN_1: 1 minute (60 seconds)
+    - MIN_5: 5 minutes (300 seconds)
+    - MIN_15: 15 minutes (900 seconds)
+    - MIN_30: 30 minutes (1800 seconds)
+    - HOUR_1: 1 hour (3600 seconds)
+    - HOUR_2: 2 hours (7200 seconds)
+    - HOUR_4: 4 hours (14400 seconds)
+    - DAY_1: 1 day (86400 seconds)
+    - WEEK_1: 1 week (604800 seconds)
+    - MONTH_1: 1 month (2592000 seconds)
+    """
+
     SEC_1 = 1
     MIN_1 = 60
     MIN_5 = 300
@@ -23,6 +39,16 @@ class CandleTimeframe(Enum):
 
 
 class CandleType(Enum):
+    """Enumeration of different types of candles.
+
+    - PRICE: Regular price candles based on actual trades
+    - MARK: Mark price candles (typically for derivatives)
+    - INDEX: Index price candles
+    - PREMIUM: Premium/discount candles showing difference between spot and derivatives
+    - FUNDING: Funding rate candles for perpetual contracts
+    - ACCRUED_FUNDING: Accumulated funding rate candles
+    """
+
     PRICE = "PRICE"
     MARK = "MARK"
     INDEX = "INDEX"
@@ -32,6 +58,22 @@ class CandleType(Enum):
 
 
 class Candle(BaseModel):
+    """Represents a single candlestick in a financial chart.
+
+    A candle represents price movement over a specific time period, including
+    opening price, closing price, highest and lowest prices reached, and
+    optionally the trading volume.
+
+    Attributes:
+        start_time (datetime): Start time of the candle period
+        end_time (datetime): End time of the candle period
+        open (Decimal): Opening price
+        close (Decimal): Closing price
+        high (Decimal): Highest price during the period
+        low (Decimal): Lowest price during the period
+        volume (Decimal | None): Trading volume during the period, if available
+    """
+
     start_time: datetime
     end_time: datetime
     open: Decimal
@@ -44,6 +86,19 @@ class Candle(BaseModel):
     def fill_missing_candles_with_prev_candle(
         cls, candles: list["Candle"], start: datetime, end: datetime
     ) -> list["Candle"]:
+        """Fill gaps in candle data by propagating values from previous candles.
+
+        This method ensures a continuous series of candles by filling any missing
+        periods with candles that copy the closing price of the previous candle.
+
+        Args:
+            candles (list[Candle]): List of existing candles
+            start (datetime): Start time for the complete series
+            end (datetime): End time for the complete series
+
+        Returns:
+            list[Candle]: Complete list of candles with gaps filled
+        """
         # If there are no candles, return an empty list
         if len(candles) == 0:
             return []
@@ -109,7 +164,17 @@ class Candle(BaseModel):
 
     @classmethod
     def _validate_candle_intervals(cls, candles: list["Candle"]) -> int:
-        """Validate that all candles have the same interval and return that interval."""
+        """Validate that all candles have the same time interval.
+
+        Args:
+            candles (list[Candle]): List of candles to validate
+
+        Returns:
+            int: The common interval in seconds
+
+        Raises:
+            ValueError: If no candles provided or if intervals are inconsistent
+        """
         if not candles:
             raise ValueError("No candles provided")
 
@@ -126,7 +191,15 @@ class Candle(BaseModel):
     def _validate_target_interval(
         cls, current_interval: int, target_interval: int
     ) -> None:
-        """Validate that the target interval is valid for conversion."""
+        """Validate that the target interval is valid for conversion.
+
+        Args:
+            current_interval (int): Current candle interval in seconds
+            target_interval (int): Target interval in seconds
+
+        Raises:
+            ValueError: If target interval is invalid for conversion
+        """
         if current_interval == target_interval:
             return
         if current_interval > target_interval:
@@ -140,7 +213,16 @@ class Candle(BaseModel):
     ) -> tuple[
         list[Decimal], list[Decimal], list[Decimal], list[Decimal], list[Decimal], int
     ]:
-        """Aggregate data from multiple candles within a time window."""
+        """Aggregate data from multiple candles within a time window.
+
+        Args:
+            candles (list[Candle]): List of candles to aggregate
+            start_idx (int): Starting index in the candles list
+            end_time (datetime): End time for aggregation window
+
+        Returns:
+            tuple: Contains lists of opens, closes, highs, lows, volumes, and next index
+        """
         opens: list[Decimal] = []
         closes: list[Decimal] = []
         highs: list[Decimal] = []
@@ -166,7 +248,21 @@ class Candle(BaseModel):
     def convert_candles_interval(
         cls, candles: list["Candle"], seconds_interval: int
     ) -> list["Candle"]:
-        """Convert candles to a different time interval."""
+        """Convert candles to a different time interval.
+
+        This method aggregates candles into larger timeframes or splits them into
+        smaller ones, maintaining OHLCV integrity.
+
+        Args:
+            candles (list[Candle]): List of candles to convert
+            seconds_interval (int): Target interval in seconds
+
+        Returns:
+            list[Candle]: Converted candles at the new interval
+
+        Raises:
+            ValueError: If conversion to target interval is not possible
+        """
         current_interval = cls._validate_candle_intervals(candles)
         cls._validate_target_interval(current_interval, seconds_interval)
 

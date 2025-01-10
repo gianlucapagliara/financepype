@@ -9,12 +9,32 @@ from financepype.markets.trading_pair import TradingPair
 
 
 class FundingPaymentType(Enum):
+    """Enumeration of funding payment types for perpetual contracts.
+
+    - NEXT: Next funding payment period
+    - LAST: Last funding payment period
+    """
+
     NEXT = "NEXT"
     LAST = "LAST"
 
 
 class FundingInfoUpdate(BaseModel):
-    trading_pair: str
+    """Update information for funding rates and prices.
+
+    This class represents an update to funding-related information for a perpetual
+    contract, including prices and funding rates.
+
+    Attributes:
+        trading_pair (TradingPair): The trading pair identifier
+        index_price (Decimal | None): Updated index price
+        mark_price (Decimal | None): Updated mark price
+        next_funding_utc_timestamp (int | None): Next funding time in UTC
+        next_funding_rate (Decimal | None): Next funding rate
+        last_funding_rate (Decimal | None): Last funding rate
+    """
+
+    trading_pair: TradingPair
     index_price: Decimal | None = None
     mark_price: Decimal | None = None
     next_funding_utc_timestamp: int | None = None
@@ -23,6 +43,21 @@ class FundingInfoUpdate(BaseModel):
 
 
 class FundingPayment(BaseModel):
+    """Represents a funding payment for a perpetual contract.
+
+    This class models individual funding payments that occur in perpetual contracts,
+    including the amount, direction, and timing of the payment.
+
+    Attributes:
+        trading_pair (TradingPair): The trading pair involved
+        amount (Decimal): Payment amount
+        is_received (bool): Whether payment was received (True) or paid (False)
+        timestamp (int): When the payment occurred
+        settlement_token (str): Token used for settlement
+        funding_id (str): Unique identifier for the payment
+        exchange_symbol (str | None): Exchange-specific symbol
+    """
+
     trading_pair: TradingPair
     amount: Decimal
     is_received: bool
@@ -33,12 +68,32 @@ class FundingPayment(BaseModel):
 
     @property
     def signed_amount(self) -> Decimal:
+        """Get the signed amount of the funding payment.
+
+        Returns:
+            Decimal: Positive for received payments, negative for paid payments
+        """
         return self.amount if self.is_received else -self.amount
 
 
 class FundingInfo(BaseModel):
-    """
-    Data object that details the funding information of a perpetual market.
+    """Information about funding for a perpetual market.
+
+    This class contains comprehensive information about the funding state of a
+    perpetual contract market, including current rates, timestamps, and payment
+    schedules.
+
+    Attributes:
+        trading_pair (TradingPair): The trading pair
+        index_price (Decimal): Current index price
+        mark_price (Decimal): Current mark price
+        next_funding_utc_timestamp (int | None): Next funding time
+        next_funding_rate (Decimal): Next funding rate as percentage
+        last_funding_utc_timestamp (int | None): Last funding time
+        last_funding_rate (Decimal): Last funding rate as percentage
+        payment_type (FundingPaymentType): Type of payment (NEXT/LAST)
+        live_payment_frequency (int | None): Frequency of live payments
+        utc_timestamp (int | None): Current timestamp
     """
 
     trading_pair: TradingPair
@@ -54,6 +109,11 @@ class FundingInfo(BaseModel):
 
     @property
     def payment_seconds_interval(self) -> int | None:
+        """Calculate the interval between funding payments.
+
+        Returns:
+            int | None: Interval in seconds between payments, or None if not available
+        """
         if (
             self.next_funding_utc_timestamp is not None
             and self.last_funding_utc_timestamp is not None
@@ -63,9 +123,22 @@ class FundingInfo(BaseModel):
 
     @property
     def has_live_payments(self) -> bool:
+        """Check if the market has live funding payments.
+
+        Returns:
+            bool: True if live payments are enabled
+        """
         return self.live_payment_frequency is not None
 
     def update(self, info_update: "FundingInfoUpdate") -> None:
+        """Update funding information with new data.
+
+        This method updates the funding information with new values while
+        maintaining the history of funding rates.
+
+        Args:
+            info_update (FundingInfoUpdate): New funding information
+        """
         update_dict = info_update.model_dump(exclude_unset=True)
         update_dict.pop("trading_pair", None)
         for key, value in update_dict.items():
@@ -87,15 +160,19 @@ class FundingInfo(BaseModel):
         closing_time: int | None = None,
         current_time_function: Callable[[], float] = time.time,
     ) -> dict[int, Decimal] | None:
-        """
-        Calculate the payments for the next funding time and the closing time if provided.
+        """Calculate future funding payment rates.
 
-        :param payment_seconds_format: The format of the payment in seconds. If not provided, the default is the payment_seconds_interval.
-        :param closing_time: The closing time of the position. If not provided, the default is the next funding time.
-        :param current_time_function: The function to get the current time. If not provided, the default is time.time.
+        This method calculates the expected funding payments up to a specified time,
+        taking into account live payment frequency if enabled.
 
-        -------
-        :return: A dictionary with the payment times as keys and the payment rates as values.
+        Args:
+            payment_seconds_format (int | None): Custom payment interval in seconds
+            closing_time (int | None): Time until which to calculate payments
+            current_time_function (Callable[[], float]): Function to get current time
+
+        Returns:
+            dict[int, Decimal] | None: Map of payment timestamps to rates, or None if
+                calculation is not possible
         """
 
         # If the closing time is after the next funding time, we cannot estimate the payments after and therefore we respond with None (error)

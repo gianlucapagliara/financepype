@@ -77,7 +77,7 @@ class TradingPair(BaseModel):
             raise ValueError(f"Invalid trading pair name: {v}") from e
 
     @property
-    def instrument_info(self) -> MarketInfo:
+    def market_info(self) -> MarketInfo:
         """Get the instrument information for this trading pair.
 
         Returns:
@@ -92,7 +92,7 @@ class TradingPair(BaseModel):
         Returns:
             str: The base currency (e.g., 'BTC' in 'BTC-USDT')
         """
-        return self.instrument_info.base
+        return self.market_info.base
 
     @property
     def quote(self) -> str:
@@ -101,7 +101,7 @@ class TradingPair(BaseModel):
         Returns:
             str: The quote currency (e.g., 'USDT' in 'BTC-USDT')
         """
-        return self.instrument_info.quote
+        return self.market_info.quote
 
     @property
     def instrument_type(self) -> InstrumentType:
@@ -110,4 +110,4 @@ class TradingPair(BaseModel):
         Returns:
             InstrumentType: The type of the trading instrument
         """
-        return self.instrument_info.instrument_type
+        return self.market_info.instrument_type

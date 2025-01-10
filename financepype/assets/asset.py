@@ -14,10 +14,17 @@ class Asset(BaseModel):
 
     Attributes:
         platform (Platform): The trading platform where this asset exists
+        identifier (AssetIdentifier): Unique identifier for the asset on the platform
+
+    Note:
+        Assets are immutable (frozen) by design to ensure thread safety and
+        consistent behavior in collections.
 
     Example:
-        >>> btc = SpotAsset(platform=Platform("binance"), ...)
-        >>> eth = SpotAsset(platform=Platform("binance"), ...)
+        >>> from financepype.platforms.platform import Platform
+        >>> from financepype.assets.spot import SpotAsset
+        >>> btc = SpotAsset(platform=Platform("binance"), identifier="BTC")
+        >>> eth = SpotAsset(platform=Platform("binance"), identifier="ETH")
         >>> assert btc != eth
         >>> assets = {btc, eth}  # Can be used in sets
     """

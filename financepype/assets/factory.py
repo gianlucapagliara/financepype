@@ -9,19 +9,6 @@ from financepype.markets.market import InstrumentType, MarketInfo
 from financepype.platforms.platform import Platform
 
 
-def create_derivative(platform: Platform, symbol: str, kwargs: dict[str, Any]) -> Asset:
-    side = kwargs.get("side", DerivativeSide.BOTH)
-    return DerivativeContract(
-        platform=platform,
-        identifier=AssetIdentifier(value=symbol),
-        side=side,
-    )
-
-
-def create_spot(platform: Platform, symbol: str, _: Any) -> Asset:
-    return SpotAsset(platform=platform, identifier=AssetIdentifier(value=symbol))
-
-
 class AssetFactory:
     """Factory class for creating and caching asset instances.
 
@@ -97,17 +84,14 @@ class AssetFactory:
         if cached_asset is not None:
             return cached_asset
 
-        instrument_info = None
+        market_info = None
         try:
-            instrument_info = MarketInfo.split_client_instrument_name(symbol)
+            market_info = MarketInfo.split_client_instrument_name(symbol)
         except Exception:
             pass
 
-        if (
-            instrument_info is not None
-            and instrument_info.instrument_type in cls._creators
-        ):
-            creator = cls._creators[instrument_info.instrument_type]
+        if market_info is not None and market_info.instrument_type in cls._creators:
+            creator = cls._creators[market_info.instrument_type]
             asset = creator(platform, symbol, kwargs)
         else:
             asset = SpotAsset(
@@ -122,9 +106,44 @@ class AssetFactory:
         """Register the default creator functions for standard instrument types."""
         for instrument_type in InstrumentType:
             if instrument_type.is_spot:
-                cls.register_creator(instrument_type, create_spot)
+                cls.register_creator(instrument_type, cls.create_spot)
             elif instrument_type.is_derivative:
-                cls.register_creator(instrument_type, create_derivative)
+                cls.register_creator(instrument_type, cls.create_derivative)
+
+    @classmethod
+    def create_derivative(
+        cls, platform: Platform, symbol: str, kwargs: dict[str, Any]
+    ) -> Asset:
+        """Create a derivative contract asset.
+
+        Args:
+            platform (Platform): The trading platform
+            symbol (str): The derivative contract symbol
+            kwargs (dict[str, Any]): Additional arguments, including 'side' for the contract
+
+        Returns:
+            Asset: A new derivative contract instance
+        """
+        side = kwargs.get("side", DerivativeSide.BOTH)
+        return DerivativeContract(
+            platform=platform,
+            identifier=AssetIdentifier(value=symbol),
+            side=side,
+        )
+
+    @classmethod
+    def create_spot(cls, platform: Platform, symbol: str, _: Any) -> Asset:
+        """Create a spot trading asset.
+
+        Args:
+            platform (Platform): The trading platform
+            symbol (str): The spot asset symbol
+            _ (Any): Unused additional arguments
+
+        Returns:
+            Asset: A new spot asset instance
+        """
+        return SpotAsset(platform=platform, identifier=AssetIdentifier(value=symbol))
 
 
 # Register default creators

@@ -11,17 +11,23 @@ class SpotAsset(Asset):
     Asset class to provide spot-specific functionality.
 
     Attributes:
+        platform (Platform): The platform where this asset trades (inherited from Asset)
+        identifier (AssetIdentifier): Unique identifier for the asset (inherited from Asset)
+        name (str | None): Optional human-readable name for the asset (e.g., "Bitcoin")
+
+    Properties:
         symbol (str): The trading symbol for the asset (e.g., "BTC", "ETH")
-        name (str | None): Optional human-readable name for the asset
-        platform (Platform): Inherited from Asset, the platform where this asset trades
 
     Example:
+        >>> from financepype.platforms.platform import Platform
+        >>> from financepype.assets.asset_id import AssetIdentifier
         >>> btc = SpotAsset(
         ...     platform=Platform("binance"),
-        ...     symbol="BTC",
+        ...     identifier=AssetIdentifier(value="BTC"),
         ...     name="Bitcoin"
         ... )
-        >>> print(btc.identifier)  # Outputs: BTC
+        >>> print(btc.symbol)  # Outputs: BTC
+        >>> print(btc.name)    # Outputs: Bitcoin
     """
 
     model_config = ConfigDict(frozen=True)
@@ -32,4 +38,9 @@ class SpotAsset(Asset):
 
     @property
     def symbol(self) -> str:
+        """Get the trading symbol for this asset.
+
+        Returns:
+            str: The trading symbol (e.g., "BTC", "ETH")
+        """
         return self.identifier.value
