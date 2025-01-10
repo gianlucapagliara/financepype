@@ -39,7 +39,7 @@ class Operation(BaseModel):
     owner_identifier: OwnerIdentifier
     creation_timestamp: float
     last_update_timestamp: float = Field(init=False, default=0.0)
-    current_state: Any | None = None
+    current_state: Any
     other_data: dict[str, Any] = Field(default_factory=dict)
 
     operator_operation_id_update_event: asyncio.Event = Field(

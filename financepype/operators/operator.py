@@ -1,62 +1,68 @@
-import asyncio
-import time
-
-from chronopype.processors.network import NetworkProcessor
+from pydantic import BaseModel
 
 from financepype.constants import get_instance_id
 from financepype.operators.nonce_creator import NonceCreator
 from financepype.platforms.platform import Platform
 
 
-class Operator(NetworkProcessor):
-    def __init__(self, platform: Platform):
+class OperatorConfiguration(BaseModel):
+    platform: Platform
+
+
+class Operator:
+    """Base class for platform operators.
+
+    An operator represents a connection to a trading platform or blockchain,
+    providing a standardized interface for interacting with different platforms.
+    Each operator maintains its own platform-specific state and identifiers.
+
+    Attributes:
+        _platform (Platform): The platform this operator connects to
+        _microseconds_nonce_provider (NonceCreator): Generator for unique operation IDs
+        _client_instance_id (str): Unique identifier for this client instance
+
+    Example:
+        >>> platform = Platform("binance")
+        >>> operator = Operator(platform)
+        >>> print(operator.name)  # Output: "binance"
+    """
+
+    def __init__(self, configuration: OperatorConfiguration):
+        """Initialize a new operator.
+
+        Args:
+            configuration (OperatorConfiguration): The configuration for the operator
+        """
         super().__init__()
 
-        self._platform = platform
+        self._configuration = configuration
+
         self._microseconds_nonce_provider = NonceCreator.for_microseconds()
         self._client_instance_id = get_instance_id()
 
     @property
     def platform(self) -> object:
-        return self._platform
+        """Get the platform this operator connects to.
+
+        Returns:
+            object: The platform instance
+        """
+        return self._configuration.platform
 
     @property
     def name(self) -> str:
+        """Get the name of this operator.
+
+        Returns:
+            str: The platform name
+        """
         return str(self.platform)
 
     @property
     def display_name(self) -> str:
+        """Get a human-readable name for this operator.
+
+        Returns:
+            str: The display name
+        """
         return self.name
-
-    @property
-    def status_dict(self) -> dict[str, bool]:
-        return {}
-
-    @property
-    def ready(self) -> bool:
-        """
-        Returns True if the connector is ready to operate (all connections established with the exchange). If it is
-        not ready it returns False.
-        """
-        return all(self.status_dict.values())
-
-    @property
-    def current_timestamp(self) -> float:
-        return (
-            self.state.last_timestamp
-            if self.state.last_timestamp is not None
-            else self._time()
-        )
-
-    def _time(self) -> float:
-        """
-        Method created to enable tests to mock the machine time
-        :return: The machine time (time.time())
-        """
-        return time.time()
-
-    async def _sleep(self, delay: float) -> None:
-        """
-        Method created to enable tests to prevent processes from sleeping
-        """
-        await asyncio.sleep(delay)

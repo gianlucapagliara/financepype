@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from abc import abstractmethod
 from decimal import Decimal
 from hashlib import md5
@@ -6,9 +7,10 @@ from hashlib import md5
 from bidict import bidict
 
 from financepype.constants import s_decimal_0, s_decimal_min, s_decimal_NaN
+from financepype.markets.trading_pair import TradingPair
 from financepype.operations.orders.models import OrderModifier, OrderType, TradeType
 from financepype.operations.orders.order import OrderOperation, OrderState, OrderUpdate
-from financepype.operators.operator import Operator
+from financepype.operators.operator import Operator, OperatorConfiguration
 from financepype.owners.owner import Owner
 from financepype.platforms.platform import Platform
 from financepype.rules.trading_rule import TradingRule
@@ -16,61 +18,138 @@ from financepype.rules.trading_rules_tracker import TradingRulesTracker
 from financepype.simulations.balances.engines.models import OrderDetails
 
 
+class ExchangeConfiguration(OperatorConfiguration):
+    platform: Platform
+
+
 class Exchange(Operator):
-    def __init__(self, platform: Platform):
-        super().__init__(platform)
+    """Base class for cryptocurrency exchange operators.
+
+    This class provides a standardized interface for interacting with different
+    cryptocurrency exchanges. It handles common exchange operations such as:
+    - Trading pair management
+    - Order creation and cancellation
+    - Price and size quantization
+    - Trading rules enforcement
+
+    The class implements core exchange functionality while leaving exchange-specific
+    implementations to subclasses through abstract methods.
+
+    Attributes:
+        _trading_rules_tracker (TradingRulesTracker | None): Tracks trading rules
+        _trading_pairs (list[str]): List of supported trading pairs
+
+    Example:
+        >>> exchange = BinanceExchange(Platform("binance"))
+        >>> price = exchange.get_price("BTC-USDT", is_buy=True)
+        >>> order_id = exchange.place_order(account, order_details)
+    """
+
+    def __init__(self, configuration: ExchangeConfiguration):
+        """Initialize a new exchange operator.
+
+        Args:
+            configuration (ExchangeConfiguration): The configuration for the exchange
+        """
+        super().__init__(configuration)
 
         self._trading_rules_tracker: TradingRulesTracker | None = None
         self._trading_pairs: list[str] = []
 
         self.init_trading_rules_tracker()
 
+    @classmethod
+    @abstractmethod
+    def logger(cls) -> logging.Logger:
+        raise NotImplementedError
+
     # === Properties ===
 
     @property
-    def trading_rules(self) -> dict[str, TradingRule]:
+    def trading_rules(self) -> dict[TradingPair, TradingRule]:
+        """Get the current trading rules.
+
+        Returns:
+            dict[str, TradingRule]: Map of trading pairs to their rules
+        """
         if self.trading_rules_tracker is None:
             return {}
         return self.trading_rules_tracker.trading_rules
 
     @property
     def trading_rules_tracker(self) -> TradingRulesTracker | None:
+        """Get the trading rules tracker.
+
+        Returns:
+            TradingRulesTracker | None: The rules tracker instance
+        """
         return self._trading_rules_tracker
 
     @property
     def trading_pairs(self) -> list[str]:
+        """Get supported trading pairs.
+
+        Returns:
+            list[str]: List of supported trading pair symbols
+        """
         return self._trading_pairs
 
     @property
     @abstractmethod
     def supported_order_types(self) -> list[OrderType]:
+        """Get supported order types.
+
+        Returns:
+            list[OrderType]: List of supported order types
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def supported_order_modifiers(self) -> list[OrderModifier]:
+        """Get supported order modifiers.
+
+        Returns:
+            list[OrderModifier]: List of supported order modifiers
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def is_create_request_in_exchange_synchronous(self) -> bool:
+        """Check if order creation is synchronous.
+
+        Returns:
+            bool: True if order creation is synchronous
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses
+        """
         raise NotImplementedError
 
     @property
     @abstractmethod
     def is_cancel_request_in_exchange_synchronous(self) -> bool:
+        """Check if order cancellation is synchronous.
+
+        Returns:
+            bool: True if order cancellation is synchronous
+
+        Raises:
+            NotImplementedError: Must be implemented by subclasses
+        """
         raise NotImplementedError
 
-    # === Core Functions ===
-
-    def tick(self, timestamp: float) -> None:
-        super().tick(timestamp)
-
-    def start(self, timestamp: float) -> None:
-        super().start(timestamp)
-
-    def stop(self) -> None:
-        super().stop()
+    @property
+    @abstractmethod
+    def current_timestamp(self) -> float:
+        raise NotImplementedError
 
     # === Trading Pairs/Rules ===
 
@@ -95,7 +174,7 @@ class Exchange(Operator):
             ]
         return valid_trading_pairs
 
-    async def trading_pair_symbol_map(self) -> bidict[str, str]:
+    async def trading_pair_symbol_map(self) -> bidict[TradingPair, str]:
         if self.trading_rules_tracker is None:
             return bidict()
         return await self.trading_rules_tracker.trading_pair_symbol_map()
@@ -105,7 +184,7 @@ class Exchange(Operator):
             return False
         return self.trading_rules_tracker.is_ready
 
-    async def all_trading_pairs(self) -> list[str]:
+    async def all_trading_pairs(self) -> list[TradingPair]:
         if self.trading_rules_tracker is None:
             return []
         return await self.trading_rules_tracker.all_trading_pairs()
@@ -115,21 +194,25 @@ class Exchange(Operator):
             return []
         return await self.trading_rules_tracker.all_exchange_symbols()
 
-    async def exchange_symbol_associated_to_pair(self, trading_pair: str) -> str:
+    async def exchange_symbol_associated_to_pair(
+        self, trading_pair: TradingPair
+    ) -> str:
         if self.trading_rules_tracker is None:
-            return trading_pair
+            return trading_pair.name
         return await self.trading_rules_tracker.exchange_symbol_associated_to_pair(
             trading_pair
         )
 
-    async def is_trading_pair_valid(self, trading_pair: str) -> bool:
+    async def is_trading_pair_valid(self, trading_pair: TradingPair) -> bool:
         if self.trading_rules_tracker is None:
             return False
         return await self.trading_rules_tracker.is_trading_pair_valid(trading_pair)
 
-    async def trading_pair_associated_to_exchange_symbol(self, symbol: str) -> str:
+    async def trading_pair_associated_to_exchange_symbol(
+        self, symbol: str
+    ) -> TradingPair:
         if self.trading_rules_tracker is None:
-            return symbol
+            raise ValueError("Trading rules tracker is not initialized")
         return (
             await self.trading_rules_tracker.trading_pair_associated_to_exchange_symbol(
                 symbol
@@ -145,54 +228,25 @@ class Exchange(Operator):
 
     @abstractmethod
     def get_price(
-        self, trading_pair: str, is_buy: bool, amount: Decimal = s_decimal_NaN
+        self, trading_pair: TradingPair, is_buy: bool, amount: Decimal = s_decimal_NaN
     ) -> Decimal:
-        """
-        Get price for the market trading pair.
-        :param trading_pair: The market trading pair
-        :param is_buy: Whether to buy or sell the underlying asset
-        :param amount: The amount (to buy or sell) (optional)
-        :returns The price
-        """
         raise NotImplementedError
 
     @abstractmethod
     def get_quote_price(
-        self, trading_pair: str, is_buy: bool, amount: Decimal
+        self, trading_pair: TradingPair, is_buy: bool, amount: Decimal
     ) -> Decimal:
-        """
-        Returns a quote price (or exchange rate) for a given amount, like asking how much does it cost to buy 4 apples?
-        :param trading_pair: The market trading pair
-        :param is_buy: True for buy order, False for sell order
-        :param amount: The order amount
-        :return The quoted price
-        """
         raise NotImplementedError
 
     @abstractmethod
     def get_order_price(
-        self, trading_pair: str, is_buy: bool, amount: Decimal
+        self, trading_pair: TradingPair, is_buy: bool, amount: Decimal
     ) -> Decimal:
-        """
-        Returns a price required for order submission, this price could differ from the quote price (e.g. for
-        an exchange with order book).
-        :param trading_pair: The market trading pair
-        :param is_buy: True for buy order, False for sell order
-        :param amount: The order amount
-        :return The price to specify in an order.
-        """
         raise NotImplementedError
 
     def get_order_price_quantum(
-        self, trading_pair: str, price: Decimal = s_decimal_0
+        self, trading_pair: TradingPair, price: Decimal = s_decimal_0
     ) -> Decimal:
-        """
-        Used by quantize_order_price() in _create_order()
-        Returns a price step, a minimum price increment for a given trading pair.
-
-        :param trading_pair: the trading pair to check for market conditions
-        :param price: the starting point price
-        """
         trading_rule = self.trading_rules[trading_pair]
         min_price_significance = trading_rule.min_price_significance
         min_price_increment = trading_rule.min_price_increment or s_decimal_min
@@ -217,30 +271,14 @@ class Exchange(Operator):
         return max(min_price_increment, price_quantum_significance)
 
     def get_order_size_quantum(
-        self, trading_pair: str, order_size: Decimal = s_decimal_0
+        self, trading_pair: TradingPair, order_size: Decimal = s_decimal_0
     ) -> Decimal:
-        """
-        Used by quantize_order_price() in _create_order()
-        Returns an order amount step, a minimum amount increment for a given trading pair.
-
-        :param trading_pair: the trading pair to check for market conditions
-        :param order_size: the starting point order price
-        """
         trading_rule = self.trading_rules[trading_pair]
         return Decimal(trading_rule.min_base_amount_increment)
 
     def quantize_order_amount(
-        self, trading_pair: str, amount: Decimal, price: Decimal = s_decimal_0
+        self, trading_pair: TradingPair, amount: Decimal, price: Decimal = s_decimal_0
     ) -> Decimal:
-        """
-        Applies the trading rules to calculate the correct order amount for the market
-
-        :param trading_pair: the token pair for which the order will be created
-        :param amount: the intended amount for the order
-        :param price: the intended price for the order
-
-        :return: the quantized order amount after applying the trading rules
-        """
         trading_rule = self.trading_rules[trading_pair]
         quantized_amount = self._quantize_order_amount(trading_pair, amount)
 
@@ -258,11 +296,15 @@ class Exchange(Operator):
 
         return quantized_amount
 
-    def _quantize_order_amount(self, trading_pair: str, amount: Decimal) -> Decimal:
+    def _quantize_order_amount(
+        self, trading_pair: TradingPair, amount: Decimal
+    ) -> Decimal:
         order_size_quantum = self.get_order_size_quantum(trading_pair, amount)
         return (amount // order_size_quantum) * order_size_quantum
 
-    def _quantize_order_price(self, trading_pair: str, price: Decimal) -> Decimal:
+    def _quantize_order_price(
+        self, trading_pair: TradingPair, price: Decimal
+    ) -> Decimal:
         if price.is_nan():
             return price
         price_quantum = self.get_order_price_quantum(trading_pair, price)
@@ -270,7 +312,7 @@ class Exchange(Operator):
 
     def quantize_order_price(
         self,
-        trading_pair: str,
+        trading_pair: TradingPair,
         price: Decimal,
         trade_type: TradeType | None = None,
         is_aggressive: bool = False,
@@ -292,10 +334,10 @@ class Exchange(Operator):
 
     # === Orders Functions ===
 
-    def get_new_client_order_id(
+    def get_new_client_operation_id(
         self,
         order_details: OrderDetails,
-        client_order_id_prefix: str = "",
+        client_operation_id_prefix: str = "",
         max_id_len: int | None = None,
     ) -> str:
         base = order_details.trading_pair.base
@@ -306,10 +348,10 @@ class Exchange(Operator):
         base_str = f"{base[0]}{base[-1]}"  # 2 chars
         quote_str = f"{quote[0]}{quote[-1]}"  # 2 chars
         ts_hex = hex(self._microseconds_nonce_provider.get_tracking_nonce())[2:]
-        client_order_id = f"{client_order_id_prefix}{side}{base_str}{quote_str}{ts_hex}{self._client_instance_id}"
+        client_order_id = f"{client_operation_id_prefix}{side}{base_str}{quote_str}{ts_hex}{self._client_instance_id}"
 
         if max_id_len is not None:
-            id_prefix = f"{client_order_id_prefix}{side}{base_str}{quote_str}"
+            id_prefix = f"{client_operation_id_prefix}{side}{base_str}{quote_str}"
             suffix_max_length = max_id_len - len(id_prefix)
             if suffix_max_length < len(ts_hex):
                 id_suffix = md5(
@@ -324,19 +366,10 @@ class Exchange(Operator):
         self,
         account: Owner,
         order_details: OrderDetails,
-        client_order_id_prefix: str = "",
+        client_operation_id_prefix: str = "",
     ) -> str:
-        """
-        Creates a promise to create a sell order using the parameters.
-        :param trading_pair: the token pair to operate with
-        :param amount: the order amount
-        :param order_type: the type of order to create (MARKET, LIMIT, LIMIT_MAKER)
-        :param price: the order price
-        :param client_order_id_prefix: the prefix to add to the client order id
-        :return: the id assigned by the connector to the order (the client id)
-        """
-        client_order_id = self.get_new_client_order_id(
-            order_details, client_order_id_prefix=client_order_id_prefix
+        client_order_id = self.get_new_client_operation_id(
+            order_details, client_operation_id_prefix=client_operation_id_prefix
         )
         self._create_order(account, client_order_id, order_details)
         return client_order_id
@@ -354,17 +387,6 @@ class Exchange(Operator):
     def _create_order(
         self, account: Owner, client_order_id: str, order_details: OrderDetails
     ) -> None:
-        """
-        Creates an order in the exchange using the parameters to configure it
-
-        :param trade_type: the side of the order (BUY of SELL)
-        :param order_id: the id that should be assigned to the order (the client id)
-        :param trading_pair: the token pair to operate with
-        :param amount: the order amount
-        :param order_type: the type of order to create (MARKET, LIMIT, LIMIT_MAKER)
-        :param price: the order price
-        :param client_order_id_prefix: the prefix to add to the client order id
-        """
         order_details = self.prepare_order_details(order_details)
 
         self.start_tracking_order(
@@ -468,21 +490,9 @@ class Exchange(Operator):
     # === Cancel Functions ===
 
     def cancel(self, account: Owner, order_id: str) -> None:
-        """
-        Creates a promise to cancel an order in the exchange
-
-        :param trading_pair: the trading pair the order to cancel operates with
-        :param order_id: the client id of the order to cancel
-        """
         asyncio.ensure_future(self._execute_cancel(account, order_id))
 
     async def _execute_cancel(self, account: Owner, order_id: str) -> None:
-        """
-        Requests the exchange to cancel an active order
-
-        :param trading_pair: the trading pair the order to cancel operates with
-        :param order_id: the client id of the order to cancel
-        """
         tracked_order = self.get_tracked_order(order_id)
         if tracked_order is not None:
             await self._execute_order_cancel(account, tracked_order)
@@ -496,7 +506,7 @@ class Exchange(Operator):
         except asyncio.CancelledError:
             raise
         except TimeoutError:
-            # Binance does not allow cancels with the client/user order id so log a warning and wait for the creation of the order to complete
+            # WARNING: Binance does not allow cancels with the client/user order id so log a warning and wait for the creation of the order to complete
             self.logger().warning(
                 f"Failed to cancel the order {order.client_operation_id} because it does not have an exchange order id yet"
             )

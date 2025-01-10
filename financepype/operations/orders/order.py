@@ -9,7 +9,6 @@ from typing_extensions import deprecated
 
 from financepype.assets.asset import Asset
 from financepype.constants import s_decimal_0
-from financepype.markets.market import MarketInfo
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import OperationFee
 from financepype.operations.operation import Operation
@@ -78,10 +77,6 @@ class TradeUpdate(BaseModel):
     def fee_asset(self) -> Asset | None:  # Type depends on the asset implementation
         return self.fee.asset
 
-    @property
-    def instrument_info(self) -> MarketInfo:
-        return self.trading_pair.instrument_info
-
 
 class OrderOperation(Operation):
     """A class representing a trading order operation.
@@ -103,6 +98,7 @@ class OrderOperation(Operation):
     executed_amount_base: Decimal = Field(default=s_decimal_0)
     executed_amount_quote: Decimal = Field(default=s_decimal_0)
     order_fills: dict[str, TradeUpdate] = Field(default_factory=dict)
+    current_state: OrderState = Field(default=OrderState.PENDING_CREATE)
 
     completely_filled_event: asyncio.Event = Field(
         default_factory=asyncio.Event,
@@ -118,9 +114,6 @@ class OrderOperation(Operation):
 
         if self.index_price is None:
             self.index_price = self.price
-
-        if self.current_state is None:
-            self.current_state = OrderState.PENDING_CREATE
 
     # === Properties ===
 
@@ -183,10 +176,6 @@ class OrderOperation(Operation):
         if executed_value == s_decimal_0 or total_base_amount == s_decimal_0:
             return None
         return executed_value / total_base_amount
-
-    @property
-    def instrument_info(self) -> MarketInfo:
-        return self.trading_pair.instrument_info
 
     # === Status Properties ===
 
@@ -352,7 +341,7 @@ class OrderOperation(Operation):
         return self.operator_operation_id
 
     def build_order_created_message(self) -> str:
-        if self.instrument_info.instrument_type.is_spot:
+        if self.trading_pair.market_info.instrument_type.is_spot:
             message = (
                 f"Created {self.order_type.name.upper()} {self.trade_type.name.upper()} order "
                 f"{self.client_operation_id} for {self.amount} {self.trading_pair}."
