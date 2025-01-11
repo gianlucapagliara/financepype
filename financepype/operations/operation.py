@@ -35,7 +35,7 @@ class Operation(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     client_operation_id: str
-    operator_operation_id: str | None = None
+    operator_operation_id: Any | None = None
     owner_identifier: OwnerIdentifier
     creation_timestamp: float
     last_update_timestamp: float = Field(init=False, default=0.0)
@@ -67,7 +67,7 @@ class Operation(BaseModel):
 
     # === Updating ===
 
-    def update_operator_operation_id(self, operator_operation_id: str) -> None:
+    def update_operator_operation_id(self, operator_operation_id: Any) -> None:
         """Update the operator-assigned operation ID.
 
         This method can only be called once to set the operator ID.
