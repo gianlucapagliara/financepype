@@ -7,13 +7,14 @@ from financepype.assets.factory import AssetFactory
 from financepype.assets.spot import SpotAsset
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
-from financepype.operations.orders.models import OrderType, TradeType
-from financepype.operations.orders.order import (
-    OrderOperation,
+from financepype.operations.orders.models import (
     OrderState,
+    OrderType,
     OrderUpdate,
+    TradeType,
     TradeUpdate,
 )
+from financepype.operations.orders.order import OrderOperation
 from financepype.owners.owner_id import OwnerIdentifier
 from financepype.platforms.platform import Platform
 

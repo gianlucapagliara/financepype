@@ -8,8 +8,14 @@ from bidict import bidict
 
 from financepype.constants import s_decimal_0, s_decimal_min, s_decimal_NaN
 from financepype.markets.trading_pair import TradingPair
-from financepype.operations.orders.models import OrderModifier, OrderType, TradeType
-from financepype.operations.orders.order import OrderOperation, OrderState, OrderUpdate
+from financepype.operations.orders.models import (
+    OrderModifier,
+    OrderState,
+    OrderType,
+    OrderUpdate,
+    TradeType,
+)
+from financepype.operations.orders.order import OrderOperation
 from financepype.operators.operator import Operator, OperatorConfiguration
 from financepype.owners.owner import Owner
 from financepype.platforms.platform import Platform

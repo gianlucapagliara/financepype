@@ -1,6 +1,13 @@
+from decimal import Decimal
 from enum import Enum
+from typing import Any
 
+from pydantic import BaseModel
+
+from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeSide
+from financepype.markets.trading_pair import TradingPair
+from financepype.operations.fees import OperationFee
 
 
 class OrderType(Enum):
@@ -59,3 +66,59 @@ class TradeType(Enum):
             return DerivativeSide.SHORT
         else:
             return DerivativeSide.BOTH
+
+
+class OrderState(Enum):
+    PENDING_CREATE = "pending_create"  # Initial state -> waiting for exchange to create order (order not yet in order book)
+    OPEN = "open"  # Ready to be filled
+    PENDING_CANCEL = "pending_cancel"  # User requested cancellation of order -> waiting for confirmation from exchange
+    CANCELED = "canceled"  # Order was cancelled by user
+    FILLED = "filled"  # Order completely filled -> completed
+    FAILED = "failed"  # Order failed to be created by the exchange
+
+
+class OrderUpdate(BaseModel):
+    """A class representing an update to an order's state.
+
+    This class contains information about changes to an order's state,
+    including new state, timestamps, and identifiers.
+    """
+
+    trading_pair: TradingPair
+    update_timestamp: float  # seconds
+    new_state: OrderState
+    client_order_id: str | None = None
+    exchange_order_id: str | None = None
+    misc_updates: dict[str, Any] | None = None
+
+
+class TradeUpdate(BaseModel):
+    """A class representing a trade update for an order.
+
+    This class contains information about a trade that has occurred,
+    including fill details, prices, amounts, and fees.
+    """
+
+    trade_id: str
+    client_order_id: str
+    exchange_order_id: str
+    trading_pair: TradingPair
+    trade_type: TradeType
+    fill_timestamp: float  # seconds
+    fill_price: Decimal
+    fill_base_amount: Decimal
+    fill_quote_amount: Decimal
+    fee: OperationFee
+    group_order_id: str = ""
+
+    @property
+    def group_client_order_id(self) -> str | None:
+        return (
+            f"{self.group_order_id}{self.client_order_id}"
+            if self.client_order_id is not None and self.group_order_id is not None
+            else None
+        )
+
+    @property
+    def fee_asset(self) -> Asset | None:
+        return self.fee.asset
