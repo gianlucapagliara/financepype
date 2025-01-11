@@ -1,8 +1,10 @@
 import asyncio
 import logging
+from abc import abstractmethod
 from decimal import Decimal
 from typing import Any, cast
 
+from eventspype.pub.multipublisher import MultiPublisher
 from pydantic import BaseModel
 
 from financepype.assets.asset import Asset
@@ -32,7 +34,7 @@ class OwnerConfiguration(BaseModel):
     identifier: OwnerIdentifier
 
 
-class Owner:
+class Owner(MultiPublisher):
     """Base class for trading account owners.
 
     This class represents a trading account owner and provides functionality
@@ -124,6 +126,11 @@ class Owner:
             BalanceTracker: The balance tracker instance
         """
         return self._balance_tracker
+
+    @property
+    @abstractmethod
+    def current_timestamp(self) -> float:
+        raise NotImplementedError
 
     # === Balances Management ===
 
@@ -322,3 +329,17 @@ class Owner:
             AssetFactory.get_asset(self.platform, trading_pair.name, side=side),
         )
         return self.balance_tracker.remove_position(asset)
+
+    # === Retrieving ===
+
+    @abstractmethod
+    async def update_all_balances(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_all_positions(self) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def update_balance(self, asset: Asset) -> None:
+        raise NotImplementedError
