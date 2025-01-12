@@ -1,10 +1,11 @@
 import asyncio
 from abc import abstractmethod
-from collections.abc import Iterable
+from collections.abc import Coroutine, Iterable
 from datetime import timedelta
 from typing import Any, cast
 
 from financepype.assets.blockchain import BlockchainAsset
+from financepype.operations.transactions.events import TransactionPublications
 from financepype.operations.transactions.models import (
     BlockchainTransactionState,
     BlockchainTransactionUpdate,
@@ -60,6 +61,13 @@ class BlockchainWallet(Owner):
         >>> await wallet.update_all_balances()
         >>> await wallet.approve(operator, token)
     """
+
+    broadcasted_publication = TransactionPublications.broadcasted_publication
+    cancelled_publication = TransactionPublications.cancelled_publication
+    confirmed_publication = TransactionPublications.confirmed_publication
+    failed_publication = TransactionPublications.failed_publication
+    finalized_publication = TransactionPublications.finalized_publication
+    rejected_publication = TransactionPublications.rejected_publication
 
     DEFAULT_TRANSACTION_CLASS: type[BlockchainTransaction]
 
@@ -150,9 +158,9 @@ class BlockchainWallet(Owner):
         This method triggers a balance update for all tracked assets
         and sets the balances_ready event when complete.
         """
-        tasks: list[asyncio.Task[None]] = []
+        tasks: list[Coroutine[Any, Any, None]] = []
         for asset in self._tracked_assets:
-            tasks.append(asyncio.create_task(self.update_balance(asset)))
+            tasks.append(self.update_balance(asset))
 
         await asyncio.gather(*tasks)
         self._balances_ready.set()
@@ -184,7 +192,7 @@ class BlockchainWallet(Owner):
         transaction_update = await self.get_transaction_update(
             transaction, timeout, raise_timeout
         )
-        updated = await transaction.update_with_transaction_update(transaction_update)
+        updated = transaction.process_operation_update(transaction_update)
         if updated:
             transaction_update.new_state = transaction.current_state
 
@@ -242,7 +250,7 @@ class BlockchainWallet(Owner):
                     transaction.client_operation_id
                 )
             if update is not None:
-                await wallet.transaction_tracker.process_transaction_update(
+                wallet.transaction_tracker.process_transaction_update(
                     update, lambda: wallet.current_timestamp
                 )
                 await wallet.update_all_balances()
