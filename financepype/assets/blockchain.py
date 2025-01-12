@@ -16,6 +16,7 @@ class BlockchainAssetIdentifier(AssetIdentifier):
         identifier (BlockchainIdentifier): The blockchain-specific identifier
     """
 
+    model_config = ConfigDict(frozen=True)
     identifier: BlockchainIdentifier
 
 
@@ -31,6 +32,8 @@ class BlockchainAssetData(BaseModel):
         symbol (str): The trading symbol of the asset
         decimals (int): Number of decimal places the asset uses
     """
+
+    model_config = ConfigDict(frozen=True)
 
     name: str
     symbol: str
@@ -53,6 +56,14 @@ class BlockchainAsset(Asset):
 
     identifier: BlockchainAssetIdentifier
     data: BlockchainAssetData
+
+    def __hash__(self) -> int:
+        return hash((self.platform, self.identifier))
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, BlockchainAsset):
+            return NotImplemented
+        return self.platform == other.platform and self.identifier == other.identifier
 
     def convert_to_decimals(self, raw_amount: int) -> Decimal:
         """Convert raw token units to decimal representation.

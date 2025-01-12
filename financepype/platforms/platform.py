@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict, Field
 
 _platform_cache: dict[str, "Platform"] = {}
@@ -35,7 +37,7 @@ class Platform(BaseModel):
         description="Unique identifier for the platform. Must be non-empty.",
     )
 
-    def __new__(cls, identifier: str) -> "Platform":
+    def __new__(cls, **data: Any) -> "Platform":
         """Create or retrieve a cached platform instance.
 
         This method implements the caching mechanism. If a platform with the
@@ -43,17 +45,29 @@ class Platform(BaseModel):
         Otherwise, a new instance is created and cached.
 
         Args:
-            identifier (str): The platform identifier
+            **data: Keyword arguments including 'identifier' for the platform
 
         Returns:
             Platform: A new or cached platform instance
         """
-        if identifier in _platform_cache:
-            return _platform_cache[identifier]
+        identifier = data.get("identifier")
+        if identifier is None:
+            # Let Pydantic handle validation
+            instance = super().__new__(cls)
+            return instance
+
+        cache_key = f"{cls.__name__}:{identifier}"
+        for key, value in sorted(data.items()):
+            if key != "identifier":
+                cache_key += f":{key}={value}"
+
+        if cache_key in _platform_cache:
+            return _platform_cache[cache_key]
+
         instance = super().__new__(cls)
         return instance
 
-    def __init__(self, identifier: str) -> None:
+    def __init__(self, **data: Any) -> None:
         """Initialize a platform instance.
 
         This method initializes the platform and adds it to the cache.
@@ -61,10 +75,15 @@ class Platform(BaseModel):
         for new platform instances.
 
         Args:
-            identifier (str): The platform identifier
+            **data: Keyword arguments including 'identifier' for the platform
         """
-        super().__init__(identifier=identifier)
-        _platform_cache[identifier] = self
+        super().__init__(**data)
+        if self.identifier:  # Only cache if identifier is valid
+            cache_key = f"{self.__class__.__name__}:{self.identifier}"
+            for key, value in sorted(data.items()):
+                if key != "identifier":
+                    cache_key += f":{key}={value}"
+            _platform_cache[cache_key] = self
 
     def __str__(self) -> str:
         """Get the string representation of the platform.
