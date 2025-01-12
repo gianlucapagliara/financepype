@@ -59,12 +59,6 @@ class BlockchainTransaction(Operation):
         return self.operator_operation_id
 
     @property
-    @abstractmethod
-    def blockchain(self) -> BlockchainIdentifier:
-        """The identifier of the blockchain where this transaction is/will be executed."""
-        raise NotImplementedError
-
-    @property
     def paid_fee(self) -> BlockchainTransactionFee | None:
         """The actual fee paid for this transaction."""
         raise NotImplementedError
@@ -139,7 +133,7 @@ class BlockchainTransaction(Operation):
 
     # === Updating ===
 
-    async def update_with_transaction_update(
+    def process_operation_update(
         self, transaction_update: BlockchainTransactionUpdate
     ) -> bool:
         """
@@ -151,6 +145,7 @@ class BlockchainTransaction(Operation):
         Returns:
             bool: True if the update was applied successfully, False otherwise
         """
+        # Handle initial transaction ID update
         if (
             self.transaction_id is None
             and transaction_update.transaction_id is not None
@@ -166,16 +161,16 @@ class BlockchainTransaction(Operation):
         prev_status = self.current_state
 
         if transaction_update.new_state != self.current_state:
-            self._current_state = transaction_update.new_state
+            self.current_state = transaction_update.new_state
 
         if transaction_update.explorer_link is not None:
-            self._explorer_link = transaction_update.explorer_link
+            self.explorer_link = transaction_update.explorer_link
 
         if transaction_update.receipt is not None:
-            await self._process_receipt(transaction_update.receipt)
+            self.process_receipt(transaction_update.receipt)
 
         if prev_status != self.current_state:
-            self._last_update_timestamp = transaction_update.update_timestamp
+            self.last_update_timestamp = transaction_update.update_timestamp
 
         return True
 
@@ -191,10 +186,10 @@ class BlockchainTransaction(Operation):
         """
         if self.signed_transaction is not None:
             raise ValueError("Signed transaction already set")
-        self._signed_transaction = signed_transaction
+        self.signed_transaction = signed_transaction
 
     @abstractmethod
-    async def _process_receipt(self, receipt: BlockchainTransactionReceipt) -> bool:
+    def process_receipt(self, receipt: BlockchainTransactionReceipt) -> bool:
         """
         Processes the transaction receipt from the blockchain.
 

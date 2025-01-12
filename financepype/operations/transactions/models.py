@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from financepype.assets.blockchain import BlockchainAsset
 from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
@@ -76,9 +76,19 @@ class BlockchainTransactionUpdate(BaseModel):
     """
 
     update_timestamp: float
-    client_transaction_id: str
-    transaction_id: BlockchainIdentifier
+    client_transaction_id: str | None = None
+    transaction_id: BlockchainIdentifier | None = None
     new_state: BlockchainTransactionState
     receipt: BlockchainTransactionReceipt | None = None
     explorer_link: str | None = None
     other_data: dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_identifiers(cls, data: dict[str, Any]) -> dict[str, Any]:
+        """Validate that at least one identifier is present."""
+        if not data.get("client_transaction_id") and not data.get("transaction_id"):
+            raise ValueError(
+                "At least one of client_transaction_id or transaction_id must be present"
+            )
+        return data

@@ -1,16 +1,14 @@
 from collections.abc import Callable
 from typing import cast
 
-from eventspype.pub.publication import EventPublication
-
 from financepype.operations.tracker import OperationTracker
 from financepype.operations.transactions.events import (
-    BlockchainTransactionEvent,
     TransactionBroadcastedEvent,
     TransactionCancelledEvent,
     TransactionConfirmedEvent,
     TransactionFailedEvent,
     TransactionFinalizedEvent,
+    TransactionPublications,
     TransactionRejectedEvent,
 )
 from financepype.operations.transactions.models import (
@@ -37,32 +35,7 @@ class BlockchainTransactionTracker(OperationTracker):
         cancelled_publication: Published when a transaction is cancelled
     """
 
-    broadcasted_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionBroadcasted,
-        TransactionBroadcastedEvent,
-    )
-    confirmed_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionConfirmed,
-        TransactionConfirmedEvent,
-    )
-    finalized_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionFinalized,
-        TransactionFinalizedEvent,
-    )
-    failed_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionFailed,
-        TransactionFailedEvent,
-    )
-    rejected_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionRejected,
-        TransactionRejectedEvent,
-    )
-    cancelled_publication = EventPublication(
-        BlockchainTransactionEvent.TransactionCancelled,
-        TransactionCancelledEvent,
-    )
-
-    async def process_transaction_update(
+    def process_transaction_update(
         self,
         operation_update: BlockchainTransactionUpdate,
         current_timestamp_function: Callable[[], float],
@@ -80,28 +53,18 @@ class BlockchainTransactionTracker(OperationTracker):
         Raises:
             ValueError: If the update lacks transaction identification information
         """
-        if (
-            not operation_update.client_transaction_id
-            and not operation_update.transaction_id
-        ):
-            raise ValueError(
-                "TransactionUpdate does not contain any client_transaction_id or transaction_id",
-            )
-
         tracked_operation = cast(
             BlockchainTransaction | None,
             self.fetch_updatable_operation(
                 operation_update.client_transaction_id,
-                operation_update.transaction_id.string,
+                operation_update.transaction_id,
             ),
         )
 
         if tracked_operation is not None:
             previous_state = tracked_operation.current_state
 
-            updated = await tracked_operation.update_with_transaction_update(
-                operation_update
-            )
+            updated = tracked_operation.process_operation_update(operation_update)
             if updated:
                 self._trigger_transaction_creation(
                     tracked_operation,
@@ -139,7 +102,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction is broadcast to the network."""
         self.trigger_event(
-            self.broadcasted_publication,
+            TransactionPublications.broadcasted_publication,
             TransactionBroadcastedEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -152,7 +115,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction is confirmed in a block."""
         self.trigger_event(
-            self.confirmed_publication,
+            TransactionPublications.confirmed_publication,
             TransactionConfirmedEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -165,7 +128,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction reaches finality."""
         self.trigger_event(
-            self.finalized_publication,
+            TransactionPublications.finalized_publication,
             TransactionFinalizedEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -178,7 +141,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction fails."""
         self.trigger_event(
-            self.failed_publication,
+            TransactionPublications.failed_publication,
             TransactionFailedEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -191,7 +154,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction is rejected."""
         self.trigger_event(
-            self.rejected_publication,
+            TransactionPublications.rejected_publication,
             TransactionRejectedEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -204,7 +167,7 @@ class BlockchainTransactionTracker(OperationTracker):
     ) -> None:
         """Triggers an event when a transaction is cancelled."""
         self.trigger_event(
-            self.cancelled_publication,
+            TransactionPublications.cancelled_publication,
             TransactionCancelledEvent(
                 timestamp=current_timestamp,
                 client_operation_id=operation.client_transaction_id,
@@ -277,7 +240,12 @@ class BlockchainTransactionTracker(OperationTracker):
                 tracked_transaction, current_timestamp=current_timestamp
             )
 
-        elif tracked_transaction.is_failure:
+        elif tracked_transaction.current_state == BlockchainTransactionState.REJECTED:
+            self._trigger_rejected_event(
+                tracked_transaction, current_timestamp=current_timestamp
+            )
+
+        elif tracked_transaction.current_state == BlockchainTransactionState.FAILED:
             self._trigger_failed_event(
                 tracked_transaction, current_timestamp=current_timestamp
             )

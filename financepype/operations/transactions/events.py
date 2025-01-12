@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
+from eventspype.pub.publication import EventPublication
+
 
 class BlockchainTransactionEvent(Enum):
     """
@@ -77,3 +79,42 @@ class TransactionCancelledEvent(TransactionEvent):
     """Event emitted when a transaction is cancelled by the user before execution."""
 
     pass
+
+
+class TransactionPublications:
+    """
+    Class containing event publications for blockchain transactions.
+
+    Attributes:
+        broadcasted_publication (EventPublication): Publication for transaction broadcasted events
+        confirmed_publication (EventPublication): Publication for transaction confirmed events
+        finalized_publication (EventPublication): Publication for transaction finalized events
+        failed_publication (EventPublication): Publication for transaction failed events
+        rejected_publication (EventPublication): Publication for transaction rejected events
+        cancelled_publication (EventPublication): Publication for transaction cancelled events
+    """
+
+    broadcasted_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionBroadcasted,
+        TransactionBroadcastedEvent,
+    )
+    confirmed_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionConfirmed,
+        TransactionConfirmedEvent,
+    )
+    finalized_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionFinalized,
+        TransactionFinalizedEvent,
+    )
+    failed_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionFailed,
+        TransactionFailedEvent,
+    )
+    rejected_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionRejected,
+        TransactionRejectedEvent,
+    )
+    cancelled_publication = EventPublication(
+        BlockchainTransactionEvent.TransactionCancelled,
+        TransactionCancelledEvent,
+    )
