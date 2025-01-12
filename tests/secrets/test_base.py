@@ -10,7 +10,7 @@ from financepype.secrets.base import (
 )
 
 
-class TestExchangesSecrets(ExchangesSecrets):
+class MockExchangesSecrets(ExchangesSecrets):
     """Test implementation of ExchangesSecrets."""
 
     def retrieve_secrets(self, exchange_name: str, **kwargs: Any) -> ExchangeSecrets:
@@ -48,7 +48,7 @@ def exchange_secrets(subaccount_secrets: SubaccountSecrets) -> ExchangeSecrets:
 
 @pytest.fixture
 def exchanges_secrets() -> ExchangesSecrets:
-    return TestExchangesSecrets()
+    return MockExchangesSecrets()
 
 
 def test_subaccount_secrets_initialization(
