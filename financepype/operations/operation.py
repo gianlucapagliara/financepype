@@ -38,7 +38,7 @@ class Operation(BaseModel):
     operator_operation_id: Any | None = None
     owner_identifier: OwnerIdentifier
     creation_timestamp: float
-    last_update_timestamp: float = Field(init=False, default=0.0)
+    last_update_timestamp: float = 0.0
     current_state: Any
     other_data: dict[str, Any] = Field(default_factory=dict)
 
@@ -50,7 +50,6 @@ class Operation(BaseModel):
     def model_post_init(self, __context: Any) -> None:
         """Initialize non-Pydantic attributes after model initialization."""
         super().model_post_init(__context)
-        self.last_update_timestamp = self.creation_timestamp
         if self.operator_operation_id:
             self.operator_operation_id_update_event.set()
 

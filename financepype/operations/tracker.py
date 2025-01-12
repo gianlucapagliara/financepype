@@ -158,14 +158,14 @@ class OperationTracker:
     def fetch_operation(
         self,
         client_operation_id: str | None = None,
-        operator_operation_id: str | None = None,
+        operator_operation_id: Any | None = None,
         operations: dict[str, Operation] | None = None,
     ) -> Operation | None:
         """Fetch an operation by its client or operator ID.
 
         Args:
             client_operation_id (str | None): Client-assigned operation ID
-            operator_operation_id (str | None): Operator-assigned operation ID
+            operator_operation_id (Any | None): Operator-assigned operation ID
             operations (dict[str, Operation] | None): Operations to search in
 
         Returns:
@@ -199,13 +199,13 @@ class OperationTracker:
     def fetch_tracked_operation(
         self,
         client_operation_id: str | None = None,
-        operator_operation_id: str | None = None,
+        operator_operation_id: Any | None = None,
     ) -> Operation | None:
         """Fetch an operation from active operations.
 
         Args:
             client_operation_id (str | None): Client-assigned operation ID
-            operator_operation_id (str | None): Operator-assigned operation ID
+            operator_operation_id (Any | None): Operator-assigned operation ID
 
         Returns:
             Operation | None: The found operation or None
@@ -219,13 +219,13 @@ class OperationTracker:
     def fetch_cached_operation(
         self,
         client_operation_id: str | None = None,
-        operator_operation_id: str | None = None,
+        operator_operation_id: Any | None = None,
     ) -> Operation | None:
         """Fetch an operation from cached operations.
 
         Args:
             client_operation_id (str | None): Client-assigned operation ID
-            operator_operation_id (str | None): Operator-assigned operation ID
+            operator_operation_id (Any | None): Operator-assigned operation ID
 
         Returns:
             Operation | None: The found operation or None
@@ -239,7 +239,7 @@ class OperationTracker:
     def fetch_updatable_operation(
         self,
         client_operation_id: str | None = None,
-        operator_operation_id: str | None = None,
+        operator_operation_id: Any | None = None,
     ) -> Operation | None:
         """Fetch an operation that can still receive updates.
 
@@ -259,13 +259,13 @@ class OperationTracker:
     # === Updating ===
 
     def update_operator_operation_id(
-        self, client_operation_id: str, operator_operation_id: str
+        self, client_operation_id: str, operator_operation_id: Any
     ) -> Operation | None:
         """Update the operator-assigned ID for an operation.
 
         Args:
             client_operation_id (str): Client-assigned operation ID
-            operator_operation_id (str): New operator-assigned operation ID
+            operator_operation_id (Any): New operator-assigned operation ID
 
         Returns:
             Operation | None: The updated operation or None if not found
