@@ -2,7 +2,14 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Any, Self
 
-from pydantic import BaseModel, ConfigDict, Field, field_serializer, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from financepype.constants import s_decimal_0, s_decimal_max, s_decimal_min
 from financepype.markets.trading_pair import TradingPair
@@ -148,6 +155,28 @@ class TradingRule(BaseModel):
         default_factory=dict,
         description="Additional platform-specific rules",
     )
+
+    @field_validator("trading_pair", mode="before")
+    @classmethod
+    def validate_trading_pair(cls, v: str | TradingPair) -> TradingPair:
+        """Convert string trading pair to TradingPair object.
+
+        This validator allows the trading_pair field to accept either a string
+        in the format "BASE-QUOTE" or a TradingPair instance. If a string is
+        provided, it will be converted to a TradingPair object.
+
+        Args:
+            v: String trading pair name or TradingPair instance
+
+        Returns:
+            TradingPair: The validated trading pair object
+
+        Raises:
+            ValueError: If the trading pair format is invalid
+        """
+        if isinstance(v, str):
+            return TradingPair(name=v)
+        return v
 
     @model_validator(mode="after")
     def fix_collateral_tokens(self) -> Self:
