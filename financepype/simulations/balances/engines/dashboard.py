@@ -4,10 +4,9 @@ import pandas as pd
 import streamlit as st
 
 from financepype.markets.trading_pair import TradingPair
-from financepype.operations.fees import FeeImpactType, FeeType
-from financepype.operations.fees import OperationFee as Fee
+from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
 from financepype.operations.orders.models import OrderType, PositionAction, TradeType
-from financepype.platforms.platform import Platform
+from financepype.platforms.centralized import CentralizedPlatform
 from financepype.rules.trading_rule import DerivativeTradingRule, TradingRule
 from financepype.simulations.balances.engines.models import AssetCashflow, OrderDetails
 from financepype.simulations.balances.engines.multiengine import BalanceMultiEngine
@@ -25,7 +24,7 @@ def create_sample_order(
     fee_amount: Decimal = Decimal("0.1"),
 ) -> OrderDetails:
     """Create a sample order for simulation."""
-    platform = Platform(platform_id)
+    platform = CentralizedPlatform(identifier=platform_id)
 
     trading_pair_obj = TradingPair(name=trading_pair)
 
@@ -55,7 +54,7 @@ def create_sample_order(
         leverage=1,
         position_action=position_action,
         entry_index_price=price,
-        fee=Fee(
+        fee=OperationFee(
             asset=None,
             fee_type=fee_type,
             impact_type=fee_impact,
@@ -185,7 +184,7 @@ def main() -> None:
     st.json(involved_assets)
 
     # Complete simulation
-    simulation = engine.get_complete_simulation(order, current_balances={})
+    simulation = engine.get_complete_simulation(order)
 
     # Display cashflow simulation
     st.subheader("Cashflow Simulation")

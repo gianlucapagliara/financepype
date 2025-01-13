@@ -14,3 +14,7 @@ class CentralizedPlatform(Platform):
         default=None,
         description="The sub-identifier for the platform",
     )
+    domain: str | None = Field(
+        default=None,
+        description="The domain for the platform",
+    )

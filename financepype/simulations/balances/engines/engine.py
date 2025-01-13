@@ -38,7 +38,7 @@ Example:
     ...         ]
     ...
     ...     @classmethod
-    ...     def get_opening_outflows(cls, operation_details, current_balances):
+    ...     def get_opening_outflows(cls, operation_details):
     ...         return [
     ...             AssetCashflow(
     ...                 asset=operation_details.trading_pair.base_asset,
@@ -51,10 +51,8 @@ Example:
 """
 
 from abc import ABC, abstractmethod
-from decimal import Decimal
 from typing import Any
 
-from financepype.assets.asset import Asset
 from financepype.simulations.balances.engines.models import (
     AssetCashflow,
     OperationSimulationResult,
@@ -86,7 +84,6 @@ class BalanceEngine(ABC):
         >>> engine = MyBalanceEngine()
         >>> result = engine.get_complete_simulation(
         ...     operation_details=order,
-        ...     current_balances={"BTC": Decimal("1.0")}
         ... )
         >>> print(result.opening_outflows)  # Assets used to open position
     """
@@ -114,11 +111,7 @@ class BalanceEngine(ABC):
 
     @classmethod
     @abstractmethod
-    def get_opening_outflows(
-        cls,
-        operation_details: Any,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_outflows(cls, operation_details: Any) -> list[AssetCashflow]:
         """Get all assets leaving the account at position opening.
 
         This method calculates all assets that will leave the account when opening
@@ -129,7 +122,6 @@ class BalanceEngine(ABC):
 
         Args:
             operation_details: Details of the operation (e.g., OrderDetails)
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing outflows at opening
@@ -142,11 +134,7 @@ class BalanceEngine(ABC):
 
     @classmethod
     @abstractmethod
-    def get_opening_inflows(
-        cls,
-        operation_details: Any,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_inflows(cls, operation_details: Any) -> list[AssetCashflow]:
         """Get all assets entering the account at position opening.
 
         This method calculates all assets that will enter the account when opening
@@ -158,7 +146,6 @@ class BalanceEngine(ABC):
 
         Args:
             operation_details: Details of the operation (e.g., OrderDetails)
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing inflows at opening
@@ -171,11 +158,7 @@ class BalanceEngine(ABC):
 
     @classmethod
     @abstractmethod
-    def get_closing_outflows(
-        cls,
-        operation_details: Any,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_outflows(cls, operation_details: Any) -> list[AssetCashflow]:
         """Get all assets leaving the account at position closing.
 
         This method calculates all assets that will leave the account when closing
@@ -187,7 +170,6 @@ class BalanceEngine(ABC):
 
         Args:
             operation_details: Details of the operation (e.g., OrderDetails)
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing outflows at closing
@@ -200,11 +182,7 @@ class BalanceEngine(ABC):
 
     @classmethod
     @abstractmethod
-    def get_closing_inflows(
-        cls,
-        operation_details: Any,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_inflows(cls, operation_details: Any) -> list[AssetCashflow]:
         """Get all assets entering the account at position closing.
 
         This method calculates all assets that will enter the account when closing
@@ -216,7 +194,6 @@ class BalanceEngine(ABC):
 
         Args:
             operation_details: Details of the operation (e.g., OrderDetails)
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing inflows at closing
@@ -229,9 +206,7 @@ class BalanceEngine(ABC):
 
     @classmethod
     def get_complete_simulation(
-        cls,
-        operation_details: Any,
-        current_balances: dict[Asset, Decimal],
+        cls, operation_details: Any
     ) -> OperationSimulationResult:
         """Get a complete simulation of all cashflows for the operation.
 
@@ -245,7 +220,6 @@ class BalanceEngine(ABC):
 
         Args:
             operation_details: Details of the operation (e.g., OrderDetails)
-            current_balances: Current balances of all assets
 
         Returns:
             OperationSimulationResult containing all cashflows
@@ -258,10 +232,10 @@ class BalanceEngine(ABC):
         result = OperationSimulationResult(
             operation_details=operation_details,
             cashflows=[
-                *cls.get_opening_outflows(operation_details, current_balances),
-                *cls.get_opening_inflows(operation_details, current_balances),
-                *cls.get_closing_outflows(operation_details, current_balances),
-                *cls.get_closing_inflows(operation_details, current_balances),
+                *cls.get_opening_outflows(operation_details),
+                *cls.get_opening_inflows(operation_details),
+                *cls.get_closing_outflows(operation_details),
+                *cls.get_closing_inflows(operation_details),
             ],
         )
         return result

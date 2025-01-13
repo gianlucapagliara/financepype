@@ -25,21 +25,13 @@ from financepype.simulations.balances.engines.spot import SpotBalanceEngine
 
 
 class MockEngine(Protocol):
-    def get_opening_outflows(
-        self, order: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]: ...
+    def get_opening_outflows(self, order: OrderDetails) -> list[AssetCashflow]: ...
 
-    def get_opening_inflows(
-        self, order: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]: ...
+    def get_opening_inflows(self, order: OrderDetails) -> list[AssetCashflow]: ...
 
-    def get_closing_outflows(
-        self, order: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]: ...
+    def get_closing_outflows(self, order: OrderDetails) -> list[AssetCashflow]: ...
 
-    def get_closing_inflows(
-        self, order: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]: ...
+    def get_closing_inflows(self, order: OrderDetails) -> list[AssetCashflow]: ...
 
 
 @pytest.fixture
@@ -89,12 +81,6 @@ def mock_order_details(
         entry_index_price=Decimal("100"),
         fee=mock_fee,
     )
-
-
-@pytest.fixture
-def mock_current_balances() -> dict[Asset, Decimal]:
-    asset = Mock(spec=Asset)
-    return {asset: Decimal("1000")}
 
 
 @pytest.fixture
@@ -152,72 +138,52 @@ def test_get_engine_unsupported() -> None:
 def test_get_opening_outflows(
     mock_get_engine: Mock,
     mock_order_details: OrderDetails,
-    mock_current_balances: dict[Asset, Decimal],
     mock_engine: Mock,
 ) -> None:
     """Test getting opening outflows."""
     mock_get_engine.return_value = mock_engine
-    outflows = BalanceMultiEngine.get_opening_outflows(
-        mock_order_details, mock_current_balances
-    )
+    outflows = BalanceMultiEngine.get_opening_outflows(mock_order_details)
     assert len(outflows) == 1
     assert outflows[0].amount == Decimal("100")
-    mock_engine.get_opening_outflows.assert_called_once_with(
-        mock_order_details, mock_current_balances
-    )
+    mock_engine.get_opening_outflows.assert_called_once_with(mock_order_details)
 
 
 @patch.object(BalanceMultiEngine, "get_engine")
 def test_get_opening_inflows(
     mock_get_engine: Mock,
     mock_order_details: OrderDetails,
-    mock_current_balances: dict[Asset, Decimal],
     mock_engine: Mock,
 ) -> None:
     """Test getting opening inflows."""
     mock_get_engine.return_value = mock_engine
-    inflows = BalanceMultiEngine.get_opening_inflows(
-        mock_order_details, mock_current_balances
-    )
+    inflows = BalanceMultiEngine.get_opening_inflows(mock_order_details)
     assert len(inflows) == 0  # Spot trading has no opening inflows
-    mock_engine.get_opening_inflows.assert_called_once_with(
-        mock_order_details, mock_current_balances
-    )
+    mock_engine.get_opening_inflows.assert_called_once_with(mock_order_details)
 
 
 @patch.object(BalanceMultiEngine, "get_engine")
 def test_get_closing_outflows(
     mock_get_engine: Mock,
     mock_order_details: OrderDetails,
-    mock_current_balances: dict[Asset, Decimal],
     mock_engine: Mock,
 ) -> None:
     """Test getting closing outflows."""
     mock_get_engine.return_value = mock_engine
-    outflows = BalanceMultiEngine.get_closing_outflows(
-        mock_order_details, mock_current_balances
-    )
+    outflows = BalanceMultiEngine.get_closing_outflows(mock_order_details)
     assert len(outflows) == 1
     assert outflows[0].amount == Decimal("0.1")  # Fee amount
-    mock_engine.get_closing_outflows.assert_called_once_with(
-        mock_order_details, mock_current_balances
-    )
+    mock_engine.get_closing_outflows.assert_called_once_with(mock_order_details)
 
 
 @patch.object(BalanceMultiEngine, "get_engine")
 def test_get_closing_inflows(
     mock_get_engine: Mock,
     mock_order_details: OrderDetails,
-    mock_current_balances: dict[Asset, Decimal],
     mock_engine: Mock,
 ) -> None:
     """Test getting closing inflows."""
     mock_get_engine.return_value = mock_engine
-    inflows = BalanceMultiEngine.get_closing_inflows(
-        mock_order_details, mock_current_balances
-    )
+    inflows = BalanceMultiEngine.get_closing_inflows(mock_order_details)
     assert len(inflows) == 1
     assert inflows[0].amount == Decimal("1")  # Base asset amount
-    mock_engine.get_closing_inflows.assert_called_once_with(
-        mock_order_details, mock_current_balances
-    )
+    mock_engine.get_closing_inflows.assert_called_once_with(mock_order_details)

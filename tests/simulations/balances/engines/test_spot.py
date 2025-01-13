@@ -233,7 +233,7 @@ def test_get_opening_outflows_buy(
     buy_order_details: OrderDetails, quote_asset: Asset
 ) -> None:
     """Test getting opening outflows for buy order."""
-    outflows = SpotBalanceEngine.get_opening_outflows(buy_order_details, {})
+    outflows = SpotBalanceEngine.get_opening_outflows(buy_order_details)
     assert len(outflows) == 2  # Cost and fee
     assert outflows[0].asset == quote_asset
     assert outflows[0].amount == Decimal("50000")  # amount * price
@@ -245,7 +245,7 @@ def test_get_opening_outflows_sell(
     sell_order_details: OrderDetails, base_asset: Asset
 ) -> None:
     """Test getting opening outflows for sell order."""
-    outflows = SpotBalanceEngine.get_opening_outflows(sell_order_details, {})
+    outflows = SpotBalanceEngine.get_opening_outflows(sell_order_details)
     assert len(outflows) == 2  # Cost and fee
     assert outflows[0].asset == base_asset
     assert outflows[0].amount == Decimal("1")  # amount
@@ -259,12 +259,12 @@ def test_get_opening_outflows_invalid_trade_type(
     """Test getting opening outflows with invalid trade type."""
     buy_order_details.trade_type = "INVALID"  # type: ignore
     with pytest.raises(ValueError, match="Unsupported trade type"):
-        SpotBalanceEngine.get_opening_outflows(buy_order_details, {})
+        SpotBalanceEngine.get_opening_outflows(buy_order_details)
 
 
 def test_get_opening_inflows(buy_order_details: OrderDetails) -> None:
     """Test getting opening inflows."""
-    inflows = SpotBalanceEngine.get_opening_inflows(buy_order_details, {})
+    inflows = SpotBalanceEngine.get_opening_inflows(buy_order_details)
     assert len(inflows) == 0  # No opening inflows in spot trading
 
 
@@ -273,7 +273,7 @@ def test_get_closing_outflows_with_fee_deduction(
 ) -> None:
     """Test getting closing outflows with fee deducted from returns."""
     buy_order_details.fee.impact_type = FeeImpactType.DEDUCTED_FROM_RETURNS
-    outflows = SpotBalanceEngine.get_closing_outflows(buy_order_details, {})
+    outflows = SpotBalanceEngine.get_closing_outflows(buy_order_details)
     assert len(outflows) == 1  # Fee only
     assert outflows[0].asset == base_asset
     assert outflows[0].amount == Decimal("0.001")  # 0.1% fee
@@ -283,7 +283,7 @@ def test_get_closing_inflows_buy(
     buy_order_details: OrderDetails, base_asset: Asset
 ) -> None:
     """Test getting closing inflows for buy order."""
-    inflows = SpotBalanceEngine.get_closing_inflows(buy_order_details, {})
+    inflows = SpotBalanceEngine.get_closing_inflows(buy_order_details)
     assert len(inflows) == 1  # Return only
     assert inflows[0].asset == base_asset
     assert inflows[0].amount == Decimal("1")  # amount
@@ -293,7 +293,7 @@ def test_get_closing_inflows_sell(
     sell_order_details: OrderDetails, quote_asset: Asset
 ) -> None:
     """Test getting closing inflows for sell order."""
-    inflows = SpotBalanceEngine.get_closing_inflows(sell_order_details, {})
+    inflows = SpotBalanceEngine.get_closing_inflows(sell_order_details)
     assert len(inflows) == 1  # Return only
     assert inflows[0].asset == quote_asset
     assert inflows[0].amount == Decimal("50000")  # amount * price

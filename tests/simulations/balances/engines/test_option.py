@@ -232,7 +232,7 @@ def test_regular_option_fee_added_to_costs(
     buy_order_details: OrderDetails,
 ) -> None:
     """Test fee added to costs for regular options."""
-    outflows = OptionBalanceEngine.get_opening_outflows(buy_order_details, {})
+    outflows = OptionBalanceEngine.get_opening_outflows(buy_order_details)
     assert len(outflows) == 2  # Premium and fee
     assert outflows[0].reason == CashflowReason.OPERATION  # Premium
     assert outflows[1].reason == CashflowReason.FEE  # Fee
@@ -244,7 +244,7 @@ def test_regular_option_fee_deducted_from_returns(
 ) -> None:
     """Test fee deducted from returns for regular options."""
     buy_order_details.fee.impact_type = FeeImpactType.DEDUCTED_FROM_RETURNS
-    outflows = OptionBalanceEngine.get_closing_outflows(buy_order_details, {})
+    outflows = OptionBalanceEngine.get_closing_outflows(buy_order_details)
     assert len(outflows) == 1  # Fee only
     assert outflows[0].reason == CashflowReason.FEE
     assert outflows[0].amount == Decimal("1")  # 0.1% of 1000 USDT
@@ -255,7 +255,7 @@ def test_inverse_option_fee_added_to_costs(
 ) -> None:
     """Test fee added to costs for inverse options."""
     outflows = InverseOptionBalanceEngine.get_opening_outflows(
-        inverse_buy_order_details, {}
+        inverse_buy_order_details
     )
     assert len(outflows) == 2  # Premium and fee
     assert outflows[0].reason == CashflowReason.OPERATION  # Premium
@@ -269,7 +269,7 @@ def test_inverse_option_fee_deducted_from_returns(
     """Test fee deducted from returns for inverse options."""
     inverse_buy_order_details.fee.impact_type = FeeImpactType.DEDUCTED_FROM_RETURNS
     outflows = InverseOptionBalanceEngine.get_closing_outflows(
-        inverse_buy_order_details, {}
+        inverse_buy_order_details
     )
     assert len(outflows) == 1  # Fee only
     assert outflows[0].reason == CashflowReason.FEE

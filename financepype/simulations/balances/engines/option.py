@@ -411,9 +411,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_opening_outflows(
-        cls, order_details: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]:
+    def get_opening_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 
@@ -460,9 +458,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_opening_inflows(
-        cls, order_details: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]:
+    def get_opening_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 
@@ -485,9 +481,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_closing_outflows(
-        cls, order_details: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]:
+    def get_closing_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 
@@ -525,9 +519,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_closing_inflows(
-        cls, order_details: OrderDetails, current_balances: dict[Asset, Decimal]
-    ) -> list[AssetCashflow]:
+    def get_closing_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 

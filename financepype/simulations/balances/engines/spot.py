@@ -227,11 +227,7 @@ class SpotBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_opening_outflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Calculate the initial outflows for a spot trade.
 
         For BUY orders:
@@ -244,7 +240,6 @@ class SpotBalanceEngine(BalanceEngine):
 
         Args:
             order_details: Details of the spot trading order
-            current_balances: Current asset balances
 
         Returns:
             list[AssetCashflow]: List of opening outflows
@@ -286,11 +281,7 @@ class SpotBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_opening_inflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Calculate the initial inflows for a spot trade.
 
         For spot trading, there are no opening inflows.
@@ -298,7 +289,6 @@ class SpotBalanceEngine(BalanceEngine):
 
         Args:
             order_details: Details of the spot trading order
-            current_balances: Current asset balances
 
         Returns:
             list[AssetCashflow]: Empty list as there are no opening inflows
@@ -306,11 +296,7 @@ class SpotBalanceEngine(BalanceEngine):
         return []
 
     @classmethod
-    def get_closing_outflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Calculate the final outflows for a spot trade.
 
         The only closing outflows are fees when they are configured
@@ -318,7 +304,6 @@ class SpotBalanceEngine(BalanceEngine):
 
         Args:
             order_details: Details of the spot trading order
-            current_balances: Current asset balances
 
         Returns:
             list[AssetCashflow]: List of closing outflows (fees)
@@ -342,11 +327,7 @@ class SpotBalanceEngine(BalanceEngine):
         return result
 
     @classmethod
-    def get_closing_inflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Calculate the final inflows for a spot trade.
 
         For BUY orders:
@@ -357,7 +338,6 @@ class SpotBalanceEngine(BalanceEngine):
 
         Args:
             order_details: Details of the spot trading order
-            current_balances: Current asset balances
 
         Returns:
             list[AssetCashflow]: List of closing inflows

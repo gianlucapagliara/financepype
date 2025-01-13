@@ -21,16 +21,12 @@ Example:
     >>> # Simulate the order
     >>> result = BalanceMultiEngine.get_complete_simulation(
     ...     order_details=order,
-    ...     current_balances={"BTC": Decimal("1.0")}
     ... )
     >>>
     >>> # The simulation is handled by SpotBalanceEngine internally
     >>> print(result.opening_outflows)  # Shows the cost of the trade
 """
 
-from decimal import Decimal
-
-from financepype.assets.asset import Asset
 from financepype.markets.market import InstrumentType
 from financepype.markets.trading_pair import TradingPair
 from financepype.simulations.balances.engines.engine import BalanceEngine
@@ -78,7 +74,6 @@ class BalanceMultiEngine(BalanceEngine):
         >>> # Simulate the order
         >>> result = BalanceMultiEngine.get_complete_simulation(
         ...     order_details=order,
-        ...     current_balances={"BTC": Decimal("1.0")}
         ... )
     """
 
@@ -140,11 +135,7 @@ class BalanceMultiEngine(BalanceEngine):
         return engine.get_involved_assets(order_details)
 
     @classmethod
-    def get_opening_outflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Get all assets leaving the account at position opening.
 
         This method delegates to the appropriate specialized engine based on
@@ -152,7 +143,6 @@ class BalanceMultiEngine(BalanceEngine):
 
         Args:
             order_details: Complete specification of the order
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing outflows at opening
@@ -162,14 +152,10 @@ class BalanceMultiEngine(BalanceEngine):
             >>> print(flows[0].amount)  # Cost of opening the position
         """
         engine = cls.get_engine(order_details.trading_pair)
-        return engine.get_opening_outflows(order_details, current_balances)
+        return engine.get_opening_outflows(order_details)
 
     @classmethod
-    def get_opening_inflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_opening_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Get all assets entering the account at position opening.
 
         This method delegates to the appropriate specialized engine based on
@@ -177,7 +163,6 @@ class BalanceMultiEngine(BalanceEngine):
 
         Args:
             order_details: Complete specification of the order
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing inflows at opening
@@ -187,14 +172,10 @@ class BalanceMultiEngine(BalanceEngine):
             >>> print(flows[0].reason)  # CashflowReason.FEE for rebates
         """
         engine = cls.get_engine(order_details.trading_pair)
-        return engine.get_opening_inflows(order_details, current_balances)
+        return engine.get_opening_inflows(order_details)
 
     @classmethod
-    def get_closing_outflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Get all assets leaving the account at position closing.
 
         This method delegates to the appropriate specialized engine based on
@@ -202,7 +183,6 @@ class BalanceMultiEngine(BalanceEngine):
 
         Args:
             order_details: Complete specification of the order
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing outflows at closing
@@ -212,14 +192,10 @@ class BalanceMultiEngine(BalanceEngine):
             >>> print(flows[0].reason)  # CashflowReason.FEE
         """
         engine = cls.get_engine(order_details.trading_pair)
-        return engine.get_closing_outflows(order_details, current_balances)
+        return engine.get_closing_outflows(order_details)
 
     @classmethod
-    def get_closing_inflows(
-        cls,
-        order_details: OrderDetails,
-        current_balances: dict[Asset, Decimal],
-    ) -> list[AssetCashflow]:
+    def get_closing_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         """Get all assets entering the account at position closing.
 
         This method delegates to the appropriate specialized engine based on
@@ -227,7 +203,6 @@ class BalanceMultiEngine(BalanceEngine):
 
         Args:
             order_details: Complete specification of the order
-            current_balances: Current balances of all assets
 
         Returns:
             List of AssetCashflow objects representing inflows at closing
@@ -237,4 +212,4 @@ class BalanceMultiEngine(BalanceEngine):
             >>> print(flows[0].reason)  # CashflowReason.OPERATION
         """
         engine = cls.get_engine(order_details.trading_pair)
-        return engine.get_closing_inflows(order_details, current_balances)
+        return engine.get_closing_inflows(order_details)

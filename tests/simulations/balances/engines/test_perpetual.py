@@ -229,7 +229,7 @@ def test_get_involved_assets_invalid_action(order_details: OrderDetails) -> None
 
 def test_get_opening_outflows(order_details: OrderDetails, quote_asset: Asset) -> None:
     """Test opening outflows calculation."""
-    outflows = TestPerpetualBalanceEngine.get_opening_outflows(order_details, {})
+    outflows = TestPerpetualBalanceEngine.get_opening_outflows(order_details)
     assert len(outflows) == 2  # Margin and fee
     assert outflows[0].asset == quote_asset
     assert outflows[0].amount == Decimal("5000")  # Margin amount
@@ -238,14 +238,14 @@ def test_get_opening_outflows(order_details: OrderDetails, quote_asset: Asset) -
 
 def test_get_opening_inflows(order_details: OrderDetails) -> None:
     """Test opening inflows calculation."""
-    inflows = TestPerpetualBalanceEngine.get_opening_inflows(order_details, {})
+    inflows = TestPerpetualBalanceEngine.get_opening_inflows(order_details)
     assert len(inflows) == 0  # No inflows on opening
 
 
 def test_get_closing_outflows_with_fee_deduction(order_details: OrderDetails) -> None:
     """Test closing outflows with fee deducted from returns."""
     order_details.fee.impact_type = FeeImpactType.DEDUCTED_FROM_RETURNS
-    outflows = TestPerpetualBalanceEngine.get_closing_outflows(order_details, {})
+    outflows = TestPerpetualBalanceEngine.get_closing_outflows(order_details)
     assert len(outflows) == 1  # Fee only
     assert outflows[0].amount == Decimal("50")
 
@@ -256,7 +256,7 @@ def test_get_closing_inflows_with_profit(
     """Test closing inflows with profit."""
     order_details.position_action = PositionAction.CLOSE
     order_details.exit_price = Decimal("55000")
-    inflows = TestPerpetualBalanceEngine.get_closing_inflows(order_details, {})
+    inflows = TestPerpetualBalanceEngine.get_closing_inflows(order_details)
     assert len(inflows) == 1  # PnL only
     assert inflows[0].asset == quote_asset
     assert inflows[0].amount == Decimal("5000")  # Profit amount
@@ -305,7 +305,7 @@ def test_get_closing_inflows_open_position(
     """Test closing inflows for opening position."""
     order_details.position_action = PositionAction.OPEN
     order_details.exit_price = Decimal("55000")
-    inflows = TestPerpetualBalanceEngine.get_closing_inflows(order_details, {})
+    inflows = TestPerpetualBalanceEngine.get_closing_inflows(order_details)
     assert len(inflows) == 1  # Margin + PnL
     assert inflows[0].asset == quote_asset
     # Margin (5000) + PnL (5000) = 10000

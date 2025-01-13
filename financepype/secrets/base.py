@@ -21,7 +21,7 @@ class SubaccountSecrets(BaseModel):
     subaccount_name: str
     api_key: SecretStr
     api_secret: SecretStr
-    api_passphrase: SecretStr | None
+    api_passphrase: SecretStr | None = None
 
 
 class ExchangeSecrets(BaseModel):
