@@ -111,3 +111,17 @@ class TradingPair(BaseModel):
             InstrumentType: The type of the trading instrument
         """
         return self.market_info.instrument_type
+
+    def __str__(self) -> str:
+        return self.name
+
+    def __repr__(self) -> str:
+        return f"TradingPair(name={self.name})"
+
+    def __eq__(self, other: Any) -> bool:
+        if isinstance(other, str):
+            return self.name == other
+        return super().__eq__(other)
+
+    def __hash__(self) -> int:
+        return hash(self.name)

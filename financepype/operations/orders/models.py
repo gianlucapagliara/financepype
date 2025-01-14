@@ -87,6 +87,7 @@ class TradeType(Enum):
 class OrderState(Enum):
     PENDING_CREATE = "pending_create"  # Initial state -> waiting for exchange to create order (order not yet in order book)
     OPEN = "open"  # Ready to be filled
+    PARTIALLY_FILLED = "partially_filled"  # Partially filled
     PENDING_CANCEL = "pending_cancel"  # User requested cancellation of order -> waiting for confirmation from exchange
     CANCELED = "canceled"  # Order was cancelled by user
     FILLED = "filled"  # Order completely filled -> completed
