@@ -1,8 +1,11 @@
 from abc import abstractmethod
 from decimal import Decimal
+from typing import cast
 
 from financepype.assets.asset import Asset
+from financepype.assets.contract import DerivativeSide
 from financepype.assets.factory import AssetFactory
+from financepype.markets.position import Position
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import PositionAction, TradeType
 from financepype.simulations.balances.engines.engine import BalanceEngine
@@ -11,6 +14,7 @@ from financepype.simulations.balances.engines.models import (
     CashflowReason,
     CashflowType,
     InvolvementType,
+    MinimalOrderDetails,
     OrderDetails,
 )
 
@@ -23,93 +27,89 @@ class BasePerpetualBalanceEngine(BalanceEngine):
     - Fee handling
     - Position management
 
-    Fee Calculation Scenarios:
-    1. Regular Perpetuals (e.g., BTC-USDT perpetuals):
-       A. Absolute Fees:
-          - Fixed amount in the fee asset (usually quote currency)
-          - Example: 10 USDT fee for any trade size
-          - BUY/SELL with ADDED_TO_COSTS: Fee deducted immediately
-          - BUY/SELL with DEDUCTED_FROM_RETURNS: Fee deducted at position close
+    OPEN LONG/SHORT:
+    1. Opening Outflows:
+        - Margin in collateral asset
+        - Fee (if ADDED_TO_COSTS)
+    2. Opening Inflows:
+        - None
+    3. Closing Outflows:
+        - Fee (if DEDUCTED_FROM_RETURNS)
+    4. Closing Inflows:
+        - Position asset
 
-       B. Percentage Fees in Quote Currency (USDT):
-          - Based on notional value (amount * price)
-          - BUY with ADDED_TO_COSTS:
-            * Opening 1 BTC position at $50,000 with 0.1% fee
-            * Fee = $50,000 * 0.1% = $50 USDT
-          - BUY with DEDUCTED_FROM_RETURNS:
-            * Same calculation, deducted from PnL at close
-          - SELL with ADDED_TO_COSTS:
-            * Selling 1 BTC position at $50,000 with 0.1% fee
-            * Fee = $50,000 * 0.1% = $50 USDT
-          - SELL with DEDUCTED_FROM_RETURNS:
-            * Same calculation, deducted from PnL at close
+    CLOSE LONG/SHORT:
+    1. Opening Outflows:
+        - Position asset
+        - Fee (if ADDED_TO_COSTS)
+    2. Opening Inflows:
+        - None
+    3. Closing Outflows:
+        - Negative PnL (if any)
+        - Fee (if DEDUCTED_FROM_RETURNS)
+    4. Closing Inflows:
+        - Margin return
+        - Positive PnL (if any)
 
-    2. Inverse Perpetuals (e.g., BTC/USD perpetuals):
-       A. Absolute Fees:
-          - Fixed amount in the fee asset (usually base currency)
-          - Example: 0.001 BTC fee for any trade size
-          - BUY/SELL with ADDED_TO_COSTS: Fee deducted immediately
-          - BUY/SELL with DEDUCTED_FROM_RETURNS: Fee deducted at position close
-
-       B. Percentage Fees in Base Currency (BTC):
-          - Based on position size in contracts
-          - BUY with ADDED_TO_COSTS:
-            * Opening $50,000 worth position with 0.1% fee
-            * Position size = $50,000 / $50,000 = 1 BTC
-            * Fee = 1 BTC * 0.1% = 0.001 BTC
-          - BUY with DEDUCTED_FROM_RETURNS:
-            * Same calculation, deducted from PnL at close
-          - SELL with ADDED_TO_COSTS:
-            * Selling $50,000 worth position with 0.1% fee
-            * Position size = $50,000 / $50,000 = 1 BTC
-            * Fee = 1 BTC * 0.1% = 0.001 BTC
-          - SELL with DEDUCTED_FROM_RETURNS:
-            * Same calculation, deducted from PnL at close
+    FLIP:
+    - Combines CLOSE of existing position with OPEN of new position
+    - All cashflows from both operations apply
+    - PnL is realized from the closed position
+    - Margin is returned from old position and new margin is required for new position
+    1. Opening Outflows:
+        - Existing position asset (for closing)
+        - New margin in collateral asset (for opening)
+        - Fee (if ADDED_TO_COSTS)
+    2. Opening Inflows:
+        - Old margin return from existing position
+    3. Closing Outflows:
+        - Negative PnL (if any) from existing position
+        - Fee (if DEDUCTED_FROM_RETURNS)
+    4. Closing Inflows:
+        - New position asset
+        - Positive PnL (if any) from existing position
 
     Subclasses must implement:
     - _get_outflow_asset: Define which asset is used for margin/collateral
-    - _calculate_pnl: Define PnL calculation logic
     - _calculate_margin: Define margin calculation logic
     - _calculate_index_price: Define index price calculation logic
+    - _calculate_pnl: Define PnL calculation logic
     """
 
     @classmethod
-    def _get_margin(cls, order_details: OrderDetails) -> Decimal:
-        """Get the margin for the perpetual."""
-        return (
-            order_details.margin
-            if order_details.margin is not None
-            else cls._calculate_margin(order_details)
-        )
-
-    @classmethod
     @abstractmethod
-    def _get_outflow_asset(cls, order_details: OrderDetails) -> Asset:
-        """Get the collateral asset for margin.
-
-        Regular perpetuals: Quote currency (e.g., USDT in BTC/USDT)
-        Inverse perpetuals: Base currency (e.g., BTC in BTC/USD)
-        """
+    def _get_outflow_asset(cls, order_details: MinimalOrderDetails) -> Asset:
+        """Get the collateral asset for margin."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def _calculate_margin(cls, order_details: OrderDetails) -> Decimal:
-        """Calculate the required margin amount.
+        """Calculate the required margin amount."""
+        raise NotImplementedError
 
-        Regular perpetuals: (amount * price) / leverage in quote currency
-        Inverse perpetuals: (contract_value) / (leverage * price) in base currency
-        """
+    @classmethod
+    @abstractmethod
+    def _calculate_index_price(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the index price for a position."""
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
+    def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the liquidation price for a position."""
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
     def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
-        """Calculate the PnL for a position.
+        """Calculate the PnL for a position."""
+        raise NotImplementedError
 
-        Regular perpetuals: (exit_price - entry_price) * position_size in quote currency
-        Inverse perpetuals: (1/entry_price - 1/exit_price) * contract_value in base currency
-        """
+    @classmethod
+    @abstractmethod
+    def _notional_value(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the fee amount based on percentage fee."""
         raise NotImplementedError
 
     @classmethod
@@ -119,24 +119,24 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             return cls._get_outflow_asset(order_details)
         elif order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
             return cls._get_outflow_asset(order_details)
-        else:
-            raise ValueError(
-                f"Unsupported fee impact type: {order_details.fee.impact_type}"
-            )
+
+        raise ValueError(
+            f"Unsupported fee impact type: {order_details.fee.impact_type}"
+        )
 
     @classmethod
     def _calculate_fee_amount(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the fee amount based on fee type and trade details.
 
-        The fee calculation depends on the perpetual type (regular vs inverse) and fee asset:
+        The fee calculation depends on the fee type and impact type:
 
-        1. Regular Perpetuals:
-           - Quote currency fees (USDT): Based on notional value
-           - Example: 0.1% fee on $50,000 position = $50 USDT fee
+        1. Absolute Fees:
+            - Fixed amount in the specified fee asset
+            - Fee asset must match the expected asset based on impact type
 
-        2. Inverse Perpetuals:
-           - Base currency fees (BTC): Based on position size
-           - Example: 0.1% fee on 1 BTC position = 0.001 BTC fee
+        2. Percentage Fees:
+            - Calculated as percentage of notional value (amount * price)
+            - Fee is in the same asset as margin/collateral
 
         Args:
             order_details: Details of the perpetual futures order
@@ -145,7 +145,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             The calculated fee amount
 
         Raises:
-            ValueError: If fee type is not supported
+            ValueError: If fee type is not supported or fee asset is missing for absolute fees
             NotImplementedError: If fee is in an asset not involved in the trade
         """
         expected_asset = cls._get_expected_fee_asset(order_details)
@@ -169,7 +169,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         # Handle percentage fees
         if order_details.fee.fee_type == FeeType.PERCENTAGE:
             # Calculate based on notional value
-            notional_value = order_details.amount * order_details.price
+            notional_value = cls._notional_value(order_details)
             fee_amount = notional_value * (order_details.fee.amount / Decimal("100"))
             return fee_amount
 
@@ -177,7 +177,40 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         raise ValueError(f"Unsupported fee type: {order_details.fee.fee_type}")
 
     @classmethod
-    def get_involved_assets(cls, order_details: OrderDetails) -> list[AssetCashflow]:
+    def get_involved_assets(
+        cls, order_details: MinimalOrderDetails
+    ) -> list[AssetCashflow]:
+        """Get the involved assets for a perpetual futures order.
+
+        OPEN:
+        - Margin outflow (opening)
+        - Position inflow (closing)
+        - Fee outflow for opening (if ADDED_TO_COSTS)
+        - Fee outflow for closing (if DEDUCTED_FROM_RETURNS)
+
+        CLOSE:
+        - Position outflow (opening)
+        - Margin return inflow (closing)
+        - PnL inflow/outflow (closing)
+        - Fee outflow for opening (if ADDED_TO_COSTS)
+        - Fee outflow for closing (if DEDUCTED_FROM_RETURNS)
+
+        FLIP:
+        - Existing position outflow (opening)
+        - New margin outflow (opening)
+        - Old margin inflow (opening)
+        - New position inflow (closing)
+        - PnL inflow (closing)
+        - PnL outflow (closing)
+        - Fee outflow for opening (if ADDED_TO_COSTS)
+        -Fee outflow for closing (if DEDUCTED_FROM_RETURNS)
+
+        Args:
+            order_details (MinimalOrderDetails): Details of the perpetual futures order
+
+        Returns:
+            list[AssetCashflow]: List of involved assets
+        """
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
         potential_opening_position_asset = AssetFactory.get_asset(
@@ -195,12 +228,37 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             # For flip, we'll need both closing the existing position and opening a new one
             result.append(
                 AssetCashflow(
-                    asset=potential_opening_position_asset,
+                    asset=collateral_asset,
                     involvement_type=InvolvementType.OPENING,
                     cashflow_type=CashflowType.OUTFLOW,
                     reason=CashflowReason.OPERATION,
                 )
             )
+            result.append(
+                AssetCashflow(
+                    asset=potential_closing_position_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=potential_opening_position_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+            # Possible PnLs
             result.append(
                 AssetCashflow(
                     asset=collateral_asset,
@@ -212,17 +270,9 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             result.append(
                 AssetCashflow(
                     asset=collateral_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=potential_closing_position_asset,
                     involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.PNL,
                 )
             )
         elif order_details.position_action == PositionAction.CLOSE:
@@ -231,6 +281,14 @@ class BasePerpetualBalanceEngine(BalanceEngine):
                     asset=potential_closing_position_asset,
                     involvement_type=InvolvementType.OPENING,
                     cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
                     reason=CashflowReason.OPERATION,
                 )
             )
@@ -253,28 +311,31 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             )
             result.append(
                 AssetCashflow(
-                    asset=potential_closing_position_asset,
+                    asset=potential_opening_position_asset,
                     involvement_type=InvolvementType.CLOSING,
                     cashflow_type=CashflowType.INFLOW,
                     reason=CashflowReason.OPERATION,
                 )
             )
-        else:
-            raise ValueError(
-                f"Unsupported position action: {order_details.position_action}"
-            )
 
-        # Fee
-        if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
-            fee_asset = cls._get_expected_fee_asset(order_details)
-            result.append(
-                AssetCashflow(
-                    asset=fee_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.FEE,
-                )
+        # Possible Fees
+        fee_asset = cls._get_outflow_asset(order_details)
+        result.append(
+            AssetCashflow(
+                asset=fee_asset,
+                involvement_type=InvolvementType.OPENING,
+                cashflow_type=CashflowType.OUTFLOW,
+                reason=CashflowReason.FEE,
             )
+        )
+        result.append(
+            AssetCashflow(
+                asset=fee_asset,
+                involvement_type=InvolvementType.CLOSING,
+                cashflow_type=CashflowType.OUTFLOW,
+                reason=CashflowReason.FEE,
+            )
+        )
 
         return result
 
@@ -283,17 +344,37 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 
-        # Initial margin
-        margin_amount = cls._get_margin(order_details)
-        result.append(
-            AssetCashflow(
-                asset=collateral_asset,
-                involvement_type=InvolvementType.OPENING,
-                cashflow_type=CashflowType.OUTFLOW,
-                reason=CashflowReason.OPERATION,
-                amount=margin_amount,
+        if order_details.position_action in [PositionAction.OPEN, PositionAction.FLIP]:
+            margin_amount = cls._calculate_margin(order_details)
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                    amount=margin_amount,
+                )
             )
-        )
+
+        if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
+            closing_position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.opposite().to_position_side(),
+            )
+            position_amount = order_details.amount
+            if order_details.position_action == PositionAction.FLIP:
+                current_position = cast(Position, order_details.current_position)
+                position_amount = current_position.amount
+            result.append(
+                AssetCashflow(
+                    asset=closing_position_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                    amount=position_amount,
+                )
+            )
 
         # Fee
         if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
@@ -312,11 +393,42 @@ class BasePerpetualBalanceEngine(BalanceEngine):
 
     @classmethod
     def get_opening_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
-        return []
+        result: list[AssetCashflow] = []
+        if order_details.position_action != PositionAction.FLIP:
+            return result
+
+        current_position = cast(Position, order_details.current_position)
+        collateral_asset = cls._get_outflow_asset(order_details)
+        margin_amount = current_position.margin
+        result.append(
+            AssetCashflow(
+                asset=collateral_asset,
+                involvement_type=InvolvementType.OPENING,
+                cashflow_type=CashflowType.INFLOW,
+                reason=CashflowReason.OPERATION,
+                amount=margin_amount,
+            )
+        )
+        return result
 
     @classmethod
     def get_closing_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
+
+        # Calculate PnL
+        if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
+            pnl = cls._calculate_pnl(order_details)
+            if pnl < 0:
+                collateral_asset = cls._get_outflow_asset(order_details)
+                result.append(
+                    AssetCashflow(
+                        asset=collateral_asset,
+                        involvement_type=InvolvementType.CLOSING,
+                        cashflow_type=CashflowType.OUTFLOW,
+                        reason=CashflowReason.PNL,
+                        amount=abs(pnl),
+                    )
+                )
 
         # Fee deducted from returns
         if order_details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
@@ -338,33 +450,51 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         result: list[AssetCashflow] = []
         collateral_asset = cls._get_outflow_asset(order_details)
 
-        # Calculate PnL
+        if order_details.position_action in [PositionAction.OPEN, PositionAction.FLIP]:
+            opening_position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.to_position_side(),
+            )
+            position_amount = order_details.amount
+            if order_details.position_action == PositionAction.FLIP:
+                current_position = cast(Position, order_details.current_position)
+                position_amount = current_position.amount
+            result.append(
+                AssetCashflow(
+                    asset=opening_position_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.OPERATION,
+                    amount=position_amount,
+                )
+            )
+
+        if order_details.position_action == PositionAction.CLOSE:
+            current_position = cast(Position, order_details.current_position)
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.OPERATION,
+                    amount=current_position.margin,
+                )
+            )
+
         if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
             pnl = cls._calculate_pnl(order_details)
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.PNL,
-                    amount=abs(
-                        pnl
-                    ),  # Amount should be positive, direction handled by cashflow_type
+            if pnl > 0:
+                collateral_asset = cls._get_outflow_asset(order_details)
+                result.append(
+                    AssetCashflow(
+                        asset=collateral_asset,
+                        involvement_type=InvolvementType.CLOSING,
+                        cashflow_type=CashflowType.INFLOW,
+                        reason=CashflowReason.PNL,
+                        amount=abs(pnl),
+                    )
                 )
-            )
-        elif order_details.position_action == PositionAction.OPEN:
-            # For OPEN positions, we return the initial margin plus any PnL
-            margin_amount = cls._get_margin(order_details)
-            pnl = cls._calculate_pnl(order_details)
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.PNL,
-                    amount=margin_amount + abs(pnl),
-                )
-            )
 
         return result
 
@@ -376,33 +506,6 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
     - PnL in quote currency
     - Margin in quote currency
     - Position size in base currency
-
-    OPEN LONG:
-    1. Opening Outflows:
-        - USDT (quote): initial margin ((amount * price) / leverage)
-        - Fee asset: fee amount (if ADDED_TO_COSTS)
-    2. Opening Inflows: None
-    3. Closing Outflows:
-        - Fee asset: fee amount (if DEDUCTED_FROM_RETURNS)
-    4. Closing Inflows:
-        - USDT (quote): margin return + PnL
-        - PnL = (exit_price - entry_price) * position_size
-
-    OPEN SHORT:
-    1. Opening Outflows:
-        - USDT (quote): initial margin ((amount * price) / leverage)
-        - Fee asset: fee amount (if ADDED_TO_COSTS)
-    2. Opening Inflows: None
-    3. Closing Outflows:
-        - Fee asset: fee amount (if DEDUCTED_FROM_RETURNS)
-    4. Closing Inflows:
-        - USDT (quote): margin return + PnL
-        - PnL = (entry_price - exit_price) * position_size
-
-    FLIP:
-    - Combines CLOSE of existing position with OPEN of new position
-    - All cashflows from both operations apply
-    - PnL is realized from the closed position
 
     Fee Handling:
     - Supports both absolute and percentage fees
@@ -420,14 +523,15 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
 
         Typically this is the quote currency (e.g., USDT in BTC/USDT)
         """
+        symbol = None
         if order_details.trade_type == TradeType.BUY:
             symbol = order_details.trading_rule.buy_order_collateral_token
         elif order_details.trade_type == TradeType.SELL:
             symbol = order_details.trading_rule.sell_order_collateral_token
-        else:
-            raise ValueError(f"Unsupported trade type: {order_details.trade_type}")
+
         if symbol is None:
             raise ValueError("Collateral token not specified in trading rule")
+
         asset = AssetFactory.get_asset(order_details.platform, symbol)
         return asset
 
@@ -442,6 +546,22 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
         )
 
     @classmethod
+    def _notional_value(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the notional value of the order."""
+        return order_details.amount * order_details.price
+
+    @classmethod
+    def _calculate_index_price(cls, order_details: OrderDetails) -> Decimal:
+        raise NotImplementedError(
+            "Index price can't be calculated for regular perpetuals"
+        )
+
+    @classmethod
+    def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the liquidation price for a position."""
+        raise NotImplementedError
+
+    @classmethod
     def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
         """Calculate PnL in quote currency.
 
@@ -449,14 +569,19 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
         - LONG: PnL = (exit_price - entry_price) * position_size
         - SHORT: PnL = (entry_price - exit_price) * position_size
         """
-        if order_details.entry_price is None or order_details.exit_price is None:
+        if order_details.position_action == PositionAction.OPEN:
             return Decimal("0")
 
-        entry_price = order_details.entry_price
-        exit_price = order_details.exit_price
-        position_size = order_details.amount
+        current_position = cast(Position, order_details.current_position)
+        entry_price = current_position.entry_price
+        exit_price = order_details.price
+        position_size = (
+            order_details.amount
+            if order_details.position_action == PositionAction.CLOSE
+            else current_position.amount
+        )
 
-        if order_details.trade_type == TradeType.BUY:
+        if current_position.position_side == DerivativeSide.LONG:
             pnl = (exit_price - entry_price) * position_size
         else:
             pnl = (entry_price - exit_price) * position_size
@@ -471,33 +596,6 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
     - PnL in base currency
     - Margin in base currency
     - Position size in contract value (USD)
-
-    OPEN LONG:
-    1. Opening Outflows:
-        - BTC (base): initial margin (contract_value / (leverage * entry_price))
-        - Fee asset: fee amount (if ADDED_TO_COSTS)
-    2. Opening Inflows: None
-    3. Closing Outflows:
-        - Fee asset: fee amount (if DEDUCTED_FROM_RETURNS)
-    4. Closing Inflows:
-        - BTC (base): margin return + PnL
-        - PnL = (1/entry_price - 1/exit_price) * contract_value
-
-    OPEN SHORT:
-    1. Opening Outflows:
-        - BTC (base): initial margin (contract_value / (leverage * entry_price))
-        - Fee asset: fee amount (if ADDED_TO_COSTS)
-    2. Opening Inflows: None
-    3. Closing Outflows:
-        - Fee asset: fee amount (if DEDUCTED_FROM_RETURNS)
-    4. Closing Inflows:
-        - BTC (base): margin return + PnL
-        - PnL = (1/exit_price - 1/entry_price) * contract_value
-
-    FLIP:
-    - Combines CLOSE of existing position with OPEN of new position
-    - All cashflows from both operations apply
-    - PnL is realized from the closed position
 
     Key Differences from Regular Perpetuals:
     - PnL and margin in base currency (e.g., BTC)
@@ -523,9 +621,25 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
 
         margin = contract_value / (leverage * entry_price)
         """
-        contract_value = order_details.amount  # In USD
-        entry_price = order_details.entry_index_price
+        contract_value = order_details.amount
+        entry_price = order_details.price
         return contract_value / (Decimal(order_details.leverage) * entry_price)
+
+    @classmethod
+    def _notional_value(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the notional value of the order."""
+        return order_details.amount / order_details.price
+
+    @classmethod
+    def _calculate_index_price(cls, order_details: OrderDetails) -> Decimal:
+        raise NotImplementedError(
+            "Index price can't be calculated for inverse perpetuals"
+        )
+
+    @classmethod
+    def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the liquidation price for a position."""
+        raise NotImplementedError
 
     @classmethod
     def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
@@ -535,14 +649,19 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
         - LONG: PnL = (1/entry_price - 1/exit_price) * contract_value
         - SHORT: PnL = (1/exit_price - 1/entry_price) * contract_value
         """
-        if order_details.entry_price is None or order_details.exit_price is None:
+        if order_details.position_action == PositionAction.OPEN:
             return Decimal("0")
 
-        entry_price = order_details.entry_price
-        exit_price = order_details.exit_price
-        contract_value = order_details.amount  # In USD
+        current_position = cast(Position, order_details.current_position)
+        entry_price = current_position.entry_price
+        exit_price = order_details.price
+        contract_value = (
+            order_details.amount
+            if order_details.position_action == PositionAction.CLOSE
+            else current_position.amount
+        )
 
-        if order_details.trade_type == TradeType.BUY:
+        if current_position.position_side == DerivativeSide.LONG:
             pnl = (
                 Decimal("1") / entry_price - Decimal("1") / exit_price
             ) * contract_value

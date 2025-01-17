@@ -6,7 +6,7 @@ from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
-from financepype.operations.orders.models import OrderType, PositionAction, TradeType
+from financepype.operations.orders.models import OrderType, TradeType
 from financepype.platforms.platform import Platform
 from financepype.rules.trading_rule import TradingRule
 from financepype.simulations.balances.engines.models import (
@@ -68,8 +68,6 @@ def buy_order_details(
         leverage=1,
         trade_type=TradeType.BUY,
         order_type=OrderType.LIMIT,
-        position_action=PositionAction.OPEN,
-        entry_index_price=Decimal("50000"),
         fee=OperationFee(
             asset=None,
             amount=Decimal("0.1"),
@@ -95,8 +93,6 @@ def sell_order_details(
         leverage=1,
         trade_type=TradeType.SELL,
         order_type=OrderType.LIMIT,
-        position_action=PositionAction.OPEN,
-        entry_index_price=Decimal("50000"),
         fee=OperationFee(
             asset=None,
             amount=Decimal("0.1"),
@@ -120,13 +116,6 @@ def test_get_outflow_asset_sell(
     assert SpotBalanceEngine._get_outflow_asset(sell_order_details) == base_asset
 
 
-def test_get_outflow_asset_invalid_trade_type(buy_order_details: OrderDetails) -> None:
-    """Test getting outflow asset with invalid trade type."""
-    buy_order_details.trade_type = "INVALID"  # type: ignore
-    with pytest.raises(ValueError, match="Unsupported trade type"):
-        SpotBalanceEngine._get_outflow_asset(buy_order_details)
-
-
 def test_get_inflow_asset_buy(
     buy_order_details: OrderDetails, base_asset: Asset
 ) -> None:
@@ -139,15 +128,6 @@ def test_get_inflow_asset_sell(
 ) -> None:
     """Test getting inflow asset for sell order."""
     assert SpotBalanceEngine._get_inflow_asset(sell_order_details) == quote_asset
-
-
-def test_get_inflow_asset_invalid_trade_type(
-    buy_order_details: OrderDetails,
-) -> None:
-    """Test getting inflow asset with invalid trade type."""
-    buy_order_details.trade_type = "INVALID"  # type: ignore
-    with pytest.raises(ValueError, match="Unsupported trade type"):
-        SpotBalanceEngine._get_inflow_asset(buy_order_details)
 
 
 def test_get_fee_impact_absolute(
@@ -251,15 +231,6 @@ def test_get_opening_outflows_sell(
     assert outflows[0].amount == Decimal("1")  # amount
     assert outflows[1].asset == base_asset
     assert outflows[1].amount == Decimal("0.001")  # 0.1% fee
-
-
-def test_get_opening_outflows_invalid_trade_type(
-    buy_order_details: OrderDetails,
-) -> None:
-    """Test getting opening outflows with invalid trade type."""
-    buy_order_details.trade_type = "INVALID"  # type: ignore
-    with pytest.raises(ValueError, match="Unsupported trade type"):
-        SpotBalanceEngine.get_opening_outflows(buy_order_details)
 
 
 def test_get_opening_inflows(buy_order_details: OrderDetails) -> None:

@@ -2,7 +2,7 @@ from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Self
+from typing import Any, Self, cast
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -260,6 +260,22 @@ class MarketInfo(BaseModel):
     @property
     def is_inverse(self) -> bool:
         return self.instrument_type.is_inverse
+
+    @property
+    def client_name(self) -> str:
+        if self.is_spot:
+            return f"{self.base}-{self.quote}"
+        elif self.is_perpetual:
+            return f"{self.base}-{self.quote}-{self.instrument_type.value}"
+        elif self.is_option:
+            timeframe_type = cast(InstrumentTimeframeType, self.timeframe_type)
+            expiry_date = cast(datetime, self.expiry_date)
+            return f"{self.base}-{self.quote}-{self.instrument_type.value}-{timeframe_type.value}-{expiry_date.strftime('%Y%m%d')}-{self.strike_price}"
+        elif self.is_future:
+            timeframe_type = cast(InstrumentTimeframeType, self.timeframe_type)
+            return f"{self.base}-{self.quote}-{self.instrument_type.value}-{timeframe_type.value}"
+        else:
+            raise ValueError("Invalid instrument type")
 
     @classmethod
     def get_timeframe_type(

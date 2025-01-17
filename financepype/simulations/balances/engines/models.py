@@ -46,6 +46,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from financepype.assets.asset import Asset
 from financepype.constants import s_decimal_0, s_decimal_NaN
+from financepype.markets.position import Position
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import OperationFee
 from financepype.operations.orders.models import (
@@ -150,7 +151,22 @@ class AssetCashflow(BaseModel):
         return self.amount
 
 
-class OrderDetails(BaseModel):
+class MinimalOrderDetails(BaseModel):
+    """Minimal order details for simulation."""
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    trading_pair: TradingPair = Field(description="The pair being traded")
+    trading_rule: TradingRule = Field(description="Rules governing the trade")
+    platform: Platform = Field(description="Trading platform")
+    trade_type: TradeType = Field(description="Type of trade (buy/sell)")
+    order_type: OrderType = Field(description="Type of order (market/limit/etc)")
+    position_action: PositionAction = Field(
+        description="Opening/closing action",
+    )
+
+
+class OrderDetails(MinimalOrderDetails):
     """Complete specification of a trading order for simulation.
 
     This class contains all the information needed to simulate a trading order,
@@ -188,6 +204,8 @@ class OrderDetails(BaseModel):
         ... )
     """
 
+    model_config = ConfigDict(frozen=True)
+
     trading_pair: TradingPair = Field(description="The pair being traded")
     trading_rule: TradingRule = Field(description="Rules governing the trade")
     platform: Platform = Field(description="Trading platform")
@@ -199,24 +217,91 @@ class OrderDetails(BaseModel):
     )
     amount: Decimal = Field(ge=0, description="Order size")
     price: Decimal = Field(description="Order price")
-    leverage: int = Field(description="Leverage multiplier")
+    index_price: Decimal | None = Field(
+        default=None,
+        description="Current index price",
+    )
+    leverage: int = Field(default=1, description="Leverage multiplier")
     position_action: PositionAction = Field(
         description="Opening/closing action",
+        default=PositionAction.NIL,
     )
-    margin: Decimal | None = Field(
+    current_position: Position | None = Field(
         default=None,
-        description="Margin amount. If not provided, it will be calculated.",
-    )
-    entry_index_price: Decimal = Field(description="Current index price")
-    entry_price: Decimal | None = Field(
-        default=None,
-        description="Position entry price",
-    )
-    exit_price: Decimal | None = Field(
-        default=None,
-        description="Position exit price",
+        description="Current position",
     )
     fee: OperationFee = Field(description="Fee structure for the order")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Validate order details after initialization."""
+        super().model_post_init(__context)
+
+        # Validate derivative trading constraints
+        if self.trading_pair.market_info.is_derivative:
+            self.check_derivative_trading_constraints()
+        elif self.trading_pair.market_info.is_spot:
+            self.check_spot_trading_constraints()
+
+    def check_spot_trading_constraints(self) -> None:
+        """Check spot trading constraints."""
+        if self.leverage != 1:
+            raise ValueError("Leverage must be 1 for spot trading")
+        if self.position_action != PositionAction.NIL:
+            raise ValueError("Position action must be NIL for spot trading")
+        if any(
+            field is not None
+            for field in [
+                self.index_price,
+                self.current_position,
+            ]
+        ):
+            raise ValueError("Index price and position must be None for spot trading")
+
+    def check_derivative_trading_constraints(self) -> None:
+        """Check derivative trading constraints."""
+        if self.position_action == PositionAction.NIL:
+            raise ValueError("Position action must be provided for derivative trading")
+        self.check_position_action_consistency()
+
+    def check_position_action_consistency(self) -> None:
+        """Check position action consistency."""
+        if self.position_action == PositionAction.OPEN:
+            if (
+                self.current_position is not None
+                and self.current_position.position_side
+                != self.trade_type.to_position_side()
+            ):
+                raise ValueError(
+                    "Current position side must match trade type for opening a new position"
+                )
+        elif self.position_action == PositionAction.CLOSE:
+            if self.current_position is None:
+                raise ValueError("Current position must be provided for closing")
+            if (
+                self.current_position.position_side
+                == self.trade_type.to_position_side()
+            ):
+                raise ValueError(
+                    "Current position side must not match trade type for closing"
+                )
+            if self.amount > self.current_position.amount:
+                raise ValueError(
+                    "Order amount must be less than or equal to current position amount for closing, otherwise it would be a flip"
+                )
+        elif self.position_action == PositionAction.FLIP:
+            if self.current_position is None:
+                raise ValueError("Current position must be provided for flipping")
+            if (
+                self.current_position.position_side
+                == self.trade_type.to_position_side()
+            ):
+                raise ValueError(
+                    "Current position side must not match trade type for flipping"
+                )
+            if self.amount <= self.current_position.amount:
+                raise ValueError(
+                    "Order amount must be greater than current position amount for flipping"
+                )
 
     def check_potential_failure(self, current_timestamp: float | None = None) -> None:
         """Check if the order would fail based on trading rules.
@@ -304,9 +389,9 @@ class OperationSimulationResult(BaseModel):
         >>> print(result.opening_outflows)  # {Asset("BTC"): Decimal("-1.0")}
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    operation_details: Any = Field(description="Details of the simulated operation")
+    operation_details: BaseModel = Field(
+        description="Details of the simulated operation"
+    )
     cashflows: list[AssetCashflow] = Field(
         description="All cashflows in the operation",
     )
