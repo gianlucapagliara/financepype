@@ -58,7 +58,6 @@ class BlockchainTransactionReceipt(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     transaction_id: BlockchainIdentifier
-    data: Any
 
 
 class BlockchainTransactionUpdate(BaseModel):

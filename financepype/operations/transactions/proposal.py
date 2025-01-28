@@ -4,7 +4,7 @@ from typing import Any
 
 from financepype.operations.proposal import OperationProposal
 from financepype.operations.transactions.transaction import BlockchainTransaction
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import OwnerIdentifier
 
 
 class TransactionProposal(OperationProposal):

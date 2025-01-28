@@ -4,7 +4,6 @@ from typing import Any, Self
 
 from pydantic import BaseModel
 
-from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeSide
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import OperationFee
@@ -25,7 +24,10 @@ class OrderType(Enum):
         return obj
 
     def is_limit_type(self) -> bool:
-        return self in [OrderType.LIMIT, OrderType.LIMIT_MAKER]
+        return self.name in [
+            "LIMIT",
+            "LIMIT_MAKER",
+        ]  # Done by name to avoid __new__ warning
 
     def is_market_type(self) -> bool:
         return self == OrderType.MARKET
@@ -117,7 +119,7 @@ class TradeUpdate(BaseModel):
     """
 
     trade_id: str
-    client_order_id: str
+    client_order_id: str | None = None
     exchange_order_id: str
     trading_pair: TradingPair
     trade_type: TradeType
@@ -135,7 +137,3 @@ class TradeUpdate(BaseModel):
             if self.client_order_id is not None and self.group_order_id is not None
             else None
         )
-
-    @property
-    def fee_asset(self) -> Asset | None:
-        return self.fee.asset

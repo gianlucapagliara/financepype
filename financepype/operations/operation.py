@@ -4,7 +4,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import OwnerIdentifier
 
 
 class Operation(BaseModel):

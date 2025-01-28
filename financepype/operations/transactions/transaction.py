@@ -43,7 +43,7 @@ class BlockchainTransaction(Operation):
     explorer_link: str | None = None
 
     @classmethod
-    def from_transaction(cls, transaction: Self, **kwargs) -> Self:
+    def from_transaction(cls, transaction: Self, **kwargs: Any) -> Self:
         return transaction
 
     # === Properties ===
