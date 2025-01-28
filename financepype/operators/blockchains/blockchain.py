@@ -1,16 +1,15 @@
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod
+from typing import cast
 
+from financepype.operations.transactions.transaction import BlockchainTransaction
+from financepype.operators.blockchains.identifier import BlockchainIdentifier
 from financepype.operators.blockchains.models import BlockchainConfiguration
+from financepype.operators.operator import Operator, OperatorProcessor
 from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 
 
-class Blockchain(ABC):
-    def __init__(self, configuration: BlockchainConfiguration) -> None:
-        super().__init__()
-
-        self._configuration = configuration
-
+class Blockchain(Operator):
     @classmethod
     @abstractmethod
     def logger(cls) -> logging.Logger:
@@ -20,16 +19,23 @@ class Blockchain(ABC):
 
     @property
     def platform(self) -> BlockchainPlatform:
-        return self._configuration.platform
+        return cast(BlockchainPlatform, super().platform)
 
     @property
-    def name(self) -> str:
-        return (
-            self.platform.identifier
-            if not self._configuration.is_local
-            else f"Local {self.platform.identifier}"
-        )
+    def configuration(self) -> BlockchainConfiguration:
+        return cast(BlockchainConfiguration, super().configuration)
 
     @property
     def type(self) -> BlockchainType:
-        return self._configuration.platform.type
+        return self.platform.type
+
+    # === Transactions ===
+
+    @abstractmethod
+    async def fetch_transaction(
+        self, transaction_id: BlockchainIdentifier
+    ) -> BlockchainTransaction | None:
+        raise NotImplementedError
+
+
+class BlockchainProcessor(OperatorProcessor): ...

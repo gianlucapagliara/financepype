@@ -1,3 +1,9 @@
+import asyncio
+import logging
+from abc import abstractmethod
+
+from chronopype.processors.network import NetworkProcessor
+from eventspype.pub.multipublisher import MultiPublisher
 from pydantic import BaseModel
 
 from financepype.constants import get_instance_id
@@ -40,14 +46,25 @@ class Operator:
         self._microseconds_nonce_provider = NonceCreator.for_microseconds()
         self._client_instance_id = get_instance_id()
 
+        self._event_publishing = MultiPublisher()
+
+    @classmethod
+    @abstractmethod
+    def logger(cls) -> logging.Logger:
+        raise NotImplementedError
+
     @property
-    def platform(self) -> object:
+    def configuration(self) -> OperatorConfiguration:
+        return self._configuration
+
+    @property
+    def platform(self) -> Platform:
         """Get the platform this operator connects to.
 
         Returns:
             object: The platform instance
         """
-        return self._configuration.platform
+        return self.configuration.platform
 
     @property
     def name(self) -> str:
@@ -66,3 +83,52 @@ class Operator:
             str: The display name
         """
         return self.name
+
+    @property
+    @abstractmethod
+    def current_timestamp(self) -> float:
+        raise NotImplementedError
+
+    @property
+    def publishing(self) -> MultiPublisher:
+        return self._event_publishing
+
+
+class OperatorProcessor(NetworkProcessor):
+    def __init__(self, operator: Operator):
+        super().__init__()
+
+        self._operator = operator
+        self._poll_notifier = asyncio.Event()
+
+    # === Loops ===
+
+    async def update_loop(self, interval_seconds: float):
+        while True:
+            try:
+                await self._poll_notifier.wait()
+
+                await self._update_loop_fetch_updates()
+
+                self._last_poll_timestamp = self.state.last_timestamp
+                self._poll_notifier.clear()
+            except asyncio.CancelledError:
+                raise
+            except NotImplementedError:
+                raise
+            except Exception:
+                self.logger().error(
+                    "Unexpected error while fetching exchange updates.",
+                    exc_info=True,
+                )
+                await self._sleep(0.5)
+
+    @abstractmethod
+    async def _update_loop_fetch_updates(self) -> None:
+        raise NotImplementedError
+
+    async def _sleep(self, seconds: float) -> None:
+        """
+        Sleeps for a given number of seconds.
+        """
+        await asyncio.sleep(seconds)

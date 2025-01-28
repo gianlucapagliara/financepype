@@ -1,14 +1,17 @@
 from abc import abstractmethod
 from collections.abc import Iterator
+from datetime import datetime
 from decimal import Decimal
 
 from financepype.constants import s_decimal_NaN
+from financepype.markets.candle import Candle, CandleType
 from financepype.markets.orderbook import OrderBook
 from financepype.markets.orderbook.models import (
     ClientOrderBookQueryResult,
     ClientOrderBookRow,
 )
 from financepype.markets.orderbook.tracker import OrderBookTracker
+from financepype.markets.trade import PublicTrade
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.orders.models import OrderType, PriceType
 from financepype.operators.exchanges.exchange import Exchange, ExchangeConfiguration
@@ -36,6 +39,8 @@ class OrderBookExchange(Exchange):
     def init_order_book_tracker(self) -> OrderBookTracker:
         raise NotImplementedError
 
+    # === Trading pairs ===
+
     def add_trading_pairs(self, trading_pairs: list[TradingPair]) -> None:
         """
         Adds new trading pairs to the connector. This will also add the trading pairs to the order book tracker.
@@ -49,6 +54,8 @@ class OrderBookExchange(Exchange):
         :param trading_pairs: The trading pairs to remove
         """
         self.order_book_tracker.remove_trading_pairs(trading_pairs)
+
+    # === Prices ===
 
     async def get_last_traded_prices(
         self, trading_pairs: list[TradingPair]
@@ -272,3 +279,26 @@ class OrderBookExchange(Exchange):
         return Decimal(
             str(self.get_price_for_volume(trading_pair, is_buy, amount).result_price)
         )
+
+    # === Historical data ===
+
+    @abstractmethod
+    async def get_historical_trades(
+        self,
+        trading_pair: str,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+    ) -> list[PublicTrade]:
+        raise NotImplementedError
+
+    @abstractmethod
+    async def get_historical_candles(
+        self,
+        trading_pair: str,
+        seconds_interval: int,
+        exchange_interval: str,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        candle_type: CandleType = CandleType.PRICE,
+    ) -> list[Candle]:
+        raise NotImplementedError

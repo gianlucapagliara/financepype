@@ -1,5 +1,7 @@
 from enum import Enum
 
+from pydantic import Field
+
 from financepype.platforms.platform import Platform
 
 
@@ -40,3 +42,12 @@ class BlockchainPlatform(Platform):
     """
 
     type: BlockchainType
+    local: bool = Field(
+        default=False,
+        description="Whether this is a local chain (e.g. Ganache, Hardhat, etc.)",
+    )
+    testnet: bool = Field(
+        default=False,
+        description="Whether this is a testnet chain (e.g. Sepolia, etc.)",
+    )
+    chain_id: int | str | None = None

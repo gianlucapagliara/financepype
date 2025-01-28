@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from abc import abstractmethod
 from decimal import Decimal
 from hashlib import md5
@@ -59,15 +58,11 @@ class Exchange(Operator):
         """
         super().__init__(configuration)
 
-        self._trading_rules_tracker: TradingRulesTracker | None = None
         self._trading_pairs: list[str] = []
+        self._trading_rules_tracker: TradingRulesTracker | None = None
+        # self._order_tracker: OrderTracker = ...
 
         self.init_trading_rules_tracker()
-
-    @classmethod
-    @abstractmethod
-    def logger(cls) -> logging.Logger:
-        raise NotImplementedError
 
     # === Properties ===
 
@@ -150,11 +145,6 @@ class Exchange(Operator):
         Raises:
             NotImplementedError: Must be implemented by subclasses
         """
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def current_timestamp(self) -> float:
         raise NotImplementedError
 
     # === Trading Pairs/Rules ===
@@ -386,9 +376,8 @@ class Exchange(Operator):
     ) -> None:
         raise NotImplementedError
 
-    @abstractmethod
     def prepare_order_details(self, order_details: OrderDetails) -> OrderDetails:
-        raise NotImplementedError
+        return order_details
 
     def _create_order(
         self, account: Owner, client_order_id: str, order_details: OrderDetails
@@ -480,7 +469,7 @@ class Exchange(Operator):
         raise NotImplementedError
 
     @abstractmethod
-    def get_tracked_order(self, order_id: str) -> OrderOperation | None:
+    def get_tracked_order(self, account: Owner, order_id: str) -> OrderOperation | None:
         raise NotImplementedError
 
     @abstractmethod
@@ -499,7 +488,7 @@ class Exchange(Operator):
         asyncio.ensure_future(self._execute_cancel(account, order_id))
 
     async def _execute_cancel(self, account: Owner, order_id: str) -> None:
-        tracked_order = self.get_tracked_order(order_id)
+        tracked_order = self.get_tracked_order(account, order_id)
         if tracked_order is not None:
             await self._execute_order_cancel(account, tracked_order)
 

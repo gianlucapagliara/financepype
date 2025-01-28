@@ -1,10 +1,6 @@
-from pydantic import BaseModel
-
+from financepype.operators.operator import OperatorConfiguration
 from financepype.platforms.blockchain import BlockchainPlatform
 
 
-class BlockchainConfiguration(BaseModel):
+class BlockchainConfiguration(OperatorConfiguration):
     platform: BlockchainPlatform
-    chain_id: int | str | None = None
-    is_local: bool = False
-    is_local_supported: bool = False

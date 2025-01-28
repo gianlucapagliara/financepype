@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Self
 
 from pydantic import BaseModel, ConfigDict
 
@@ -17,10 +17,18 @@ class BlockchainIdentifier(BaseModel):
         >>> identifiers = {id1}  # Can be used in sets
     """
 
-    model_config = ConfigDict(frozen=True)
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
 
     raw: Any
     string: str
+
+    @classmethod
+    def from_raw(cls, value: Any) -> Self:
+        return cls(raw=value, string=cls.id_to_string(value))
+
+    @classmethod
+    def from_string(cls, value: str) -> Self:
+        return cls(raw=cls.id_from_string(value), string=value)
 
     @classmethod
     @abstractmethod
