@@ -1,9 +1,9 @@
 from pydantic import ConfigDict, Field
 
-from financepype.assets.asset import Asset
+from financepype.assets.centralized_asset import CentralizedAsset
 
 
-class SpotAsset(Asset):
+class SpotAsset(CentralizedAsset):
     """Represents a spot trading asset in the system.
 
     A spot asset is a basic tradable asset that can be bought or sold
@@ -35,12 +35,3 @@ class SpotAsset(Asset):
     name: str | None = Field(
         default=None, description="The human-readable name for the asset"
     )
-
-    @property
-    def symbol(self) -> str:
-        """Get the trading symbol for this asset.
-
-        Returns:
-            str: The trading symbol (e.g., "BTC", "ETH")
-        """
-        return self.identifier.value

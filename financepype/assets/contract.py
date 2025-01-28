@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import field_validator
 
-from financepype.assets.asset import Asset
 from financepype.assets.asset_id import AssetIdentifier
+from financepype.assets.centralized_asset import CentralizedAsset
 from financepype.markets.market import MarketInfo
 from financepype.markets.trading_pair import TradingPair
 
@@ -23,7 +23,7 @@ class DerivativeSide(Enum):
     BOTH = "BOTH"
 
 
-class DerivativeContract(Asset):
+class DerivativeContract(CentralizedAsset):
     """Represents a derivative contract asset.
 
     This class models financial derivative contracts such as futures or options.
@@ -89,7 +89,7 @@ class DerivativeContract(Asset):
         Returns:
             TradingPair: The trading pair object
         """
-        return TradingPair(name=self.identifier.value)
+        return TradingPair(name=self.symbol)
 
     @property
     def market_info(self) -> MarketInfo:

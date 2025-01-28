@@ -1,6 +1,7 @@
+from typing import Any
+
 from pydantic import BaseModel, ConfigDict
 
-from financepype.assets.asset_id import AssetIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -32,4 +33,4 @@ class Asset(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     platform: Platform
-    identifier: AssetIdentifier
+    identifier: Any

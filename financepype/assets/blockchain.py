@@ -3,21 +3,8 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from financepype.assets.asset import Asset
-from financepype.assets.asset_id import AssetIdentifier
 from financepype.operators.blockchains.identifier import BlockchainIdentifier
-
-
-class BlockchainAssetIdentifier(AssetIdentifier):
-    """Identifier specific to blockchain assets.
-
-    Extends the base AssetIdentifier to include blockchain-specific identification.
-
-    Attributes:
-        identifier (BlockchainIdentifier): The blockchain-specific identifier
-    """
-
-    model_config = ConfigDict(frozen=True)
-    identifier: BlockchainIdentifier
+from financepype.platforms.blockchain import BlockchainPlatform
 
 
 class BlockchainAssetData(BaseModel):
@@ -48,13 +35,14 @@ class BlockchainAsset(Asset):
     balance queries, approvals, and transfers.
 
     Attributes:
-        identifier (BlockchainAssetIdentifier): The blockchain-specific asset identifier
+        identifier (BlockchainIdentifier): The blockchain-specific asset identifier
         data (BlockchainAssetData): The blockchain-specific asset data
     """
 
     model_config = ConfigDict(frozen=True)
 
-    identifier: BlockchainAssetIdentifier
+    platform: BlockchainPlatform
+    identifier: BlockchainIdentifier
     data: BlockchainAssetData
 
     def __hash__(self) -> int:
