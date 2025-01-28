@@ -94,7 +94,7 @@ class BlockchainWallet(Owner):
     # === Properties ===
 
     @property
-    def chain(self) -> Blockchain:
+    def blockchain(self) -> Blockchain:
         """Get the blockchain instance.
 
         Returns:
@@ -140,7 +140,11 @@ class BlockchainWallet(Owner):
         Args:
             asset_identifiers (Iterable[BlockchainAsset]): Assets to track
         """
+        old_assets = self._tracked_assets.copy()
         self._tracked_assets = self._tracked_assets.union(assets)
+
+        for asset in self._tracked_assets - old_assets:
+            asyncio.ensure_future(self.update_balance(asset))
 
     def remove_tracked_assets(self, assets: Iterable[BlockchainAsset]) -> None:
         """Remove tracked assets.
@@ -165,6 +169,11 @@ class BlockchainWallet(Owner):
         await asyncio.gather(*tasks)
         self._balances_ready.set()
 
+    async def update_all_positions(self) -> None:
+        raise NotImplementedError(
+            "Positions are not supported on blockchain native wallets"
+        )
+
     # === Transactions Management ===
 
     async def update_transaction(
@@ -172,7 +181,7 @@ class BlockchainWallet(Owner):
         transaction: BlockchainTransaction,
         timeout: timedelta = timedelta(minutes=2),
         raise_timeout: bool = True,
-        **kwargs,
+        **kwargs: Any,
     ) -> BlockchainTransactionUpdate | None:
         """
         Waits for the transaction to be processed by the blockchain.

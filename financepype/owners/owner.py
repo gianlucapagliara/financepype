@@ -5,7 +5,7 @@ from decimal import Decimal
 from typing import Any, cast
 
 from eventspype.pub.multipublisher import MultiPublisher
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeContract, DerivativeSide
@@ -13,12 +13,69 @@ from financepype.assets.factory import AssetFactory
 from financepype.constants import s_decimal_0
 from financepype.markets.position import Position
 from financepype.markets.trading_pair import TradingPair
-from financepype.owners.owner_id import OwnerIdentifier
 from financepype.platforms.platform import Platform
 from financepype.simulations.balances.tracking.tracker import (
     BalanceTracker,
     BalanceType,
 )
+
+
+class OwnerIdentifier(BaseModel):
+    """Unique identifier for trading account owners.
+
+    This class represents a unique identifier for trading account owners
+    across different platforms. It combines a platform-specific name with
+    the platform identifier to ensure uniqueness.
+
+    The identifier is immutable and can be safely used as a dictionary key
+    or in sets. It implements proper equality and hashing behavior.
+
+    Attributes:
+        name (str): Platform-specific owner name
+        platform (Platform): The platform this owner belongs to
+        identifier (str): Combined unique identifier (platform:name)
+
+    Example:
+        >>> platform = Platform(identifier="binance")
+        >>> owner = OwnerIdentifier(name="trader1", platform=platform)
+        >>> print(owner.identifier)  # Outputs: binance:trader1
+        >>> owners = {owner}  # Can be used in sets
+    """
+
+    model_config = ConfigDict(frozen=True)
+
+    platform: Platform = Field(description="The platform the owner belongs to")
+
+    @property
+    @abstractmethod
+    def identifier(self) -> str:
+        """Get the unique identifier string.
+
+        The identifier combines the platform identifier and owner name
+        in the format "platform:name".
+
+        Returns:
+            str: The combined unique identifier
+        """
+        raise NotImplementedError
+
+    def __repr__(self) -> str:
+        """Get the string representation of the owner identifier.
+
+        Returns:
+            str: A human-readable representation of the owner
+        """
+        return f"<Owner: {self.identifier}>"
+
+
+class NamedOwnerIdentifier(OwnerIdentifier):
+    """An owner identifier with a name."""
+
+    name: str = Field(description="The name of the owner")
+
+    @property
+    def identifier(self) -> str:
+        return f"{self.platform.identifier}:{self.name}"
 
 
 class OwnerConfiguration(BaseModel):
@@ -99,15 +156,6 @@ class Owner(MultiPublisher):
             OwnerIdentifier: The owner identifier
         """
         return self._configuration.identifier
-
-    @property
-    def name(self) -> str:
-        """Get the owner's name.
-
-        Returns:
-            str: The owner name
-        """
-        return self.identifier.name
 
     @property
     def platform(self) -> Platform:
