@@ -125,3 +125,16 @@ class TradingPair(BaseModel):
 
     def __hash__(self) -> int:
         return hash(self.name)
+
+    def __deepcopy__(self, memo: dict) -> "TradingPair":
+        """Handle deep copying of the singleton instance.
+
+        Since TradingPair is a singleton, deep copying should return the same instance.
+
+        Args:
+            memo: Dictionary of id to object mappings
+
+        Returns:
+            TradingPair: The same singleton instance
+        """
+        return self

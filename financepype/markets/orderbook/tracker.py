@@ -27,16 +27,15 @@ class OrderBookTracker(MultiPublisher, ABC):
         self, trading_pairs: Iterable[TradingPair], past_diffs_window_size: int = 32
     ):
         self._trading_pairs: set[TradingPair] = set(trading_pairs)
-        self._order_books_initialized: asyncio.Event = asyncio.Event()
-        self._tracking_tasks: dict[TradingPair, asyncio.Task[None]] = {}
         self._order_books: dict[TradingPair, OrderBook] = {}
+        self._event_publications: dict[TradingPair, EventPublication] = {}
         self._tracking_message_queues: dict[
             TradingPair, asyncio.Queue[BaseOrderBookMessage]
         ] = {}
-        self._event_publications: dict[TradingPair, EventPublication] = {}
         self._past_diffs_windows: dict[TradingPair, deque[OrderBookUpdateMessage]] = (
             defaultdict(lambda: deque(maxlen=past_diffs_window_size))
         )
+
         self._order_book_diff_stream: asyncio.Queue[OrderBookUpdateMessage] = (
             asyncio.Queue()
         )
@@ -49,6 +48,16 @@ class OrderBookTracker(MultiPublisher, ABC):
         self._saved_message_queues: dict[TradingPair, deque[BaseOrderBookMessage]] = (
             defaultdict(lambda: deque(maxlen=1000))
         )
+
+        self._tracking_tasks: dict[TradingPair, asyncio.Task[None]] = {}
+
+        self._order_book_diff_router_task: asyncio.Task[None] | None = None
+        self._order_book_snapshot_router_task: asyncio.Task[None] | None = None
+        self._update_last_trade_prices_task: asyncio.Task[None] | None = None
+        self._init_order_books_task: asyncio.Task[None] | None = None
+        self._emit_trade_event_task: asyncio.Task[None] | None = None
+
+        self._order_books_initialized: asyncio.Event = asyncio.Event()
 
     @abstractmethod
     @classmethod
@@ -73,6 +82,50 @@ class OrderBookTracker(MultiPublisher, ABC):
     @property
     def ready(self) -> bool:
         return self._order_books_initialized.is_set()
+
+    def start(self):
+        self.stop(restart=True)
+
+        if len(self.trading_pairs) > 0:
+            self._order_book_diff_router_task = asyncio.ensure_future(
+                self._order_book_diff_router()
+            )
+            self._order_book_snapshot_router_task = asyncio.ensure_future(
+                self._order_book_snapshot_router()
+            )
+            self._update_last_trade_prices_task = asyncio.ensure_future(
+                self._update_last_trade_prices_loop()
+            )
+
+        self._init_order_books_task = asyncio.ensure_future(self._init_order_books())
+        self._emit_trade_event_task = asyncio.ensure_future(
+            self._emit_trade_event_loop()
+        )
+
+    def stop(self, restart: bool = False):
+        if self._init_order_books_task is not None:
+            self._init_order_books_task.cancel()
+            self._init_order_books_task = None
+        if self._emit_trade_event_task is not None:
+            self._emit_trade_event_task.cancel()
+            self._emit_trade_event_task = None
+
+        if self._order_book_diff_router_task is not None:
+            self._order_book_diff_router_task.cancel()
+            self._order_book_diff_router_task = None
+        if self._order_book_snapshot_router_task is not None:
+            self._order_book_snapshot_router_task.cancel()
+            self._order_book_snapshot_router_task = None
+        if self._update_last_trade_prices_task is not None:
+            self._update_last_trade_prices_task.cancel()
+            self._update_last_trade_prices_task = None
+
+        if len(self._tracking_tasks) > 0:
+            for _, task in self._tracking_tasks.items():
+                task.cancel()
+            self._tracking_tasks.clear()
+
+        self._order_books_initialized.clear()
 
     def add_trading_pairs(self, trading_pairs: Iterable[TradingPair]) -> None:
         self._trading_pairs.update(trading_pairs)

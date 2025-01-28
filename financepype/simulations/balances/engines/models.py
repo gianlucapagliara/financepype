@@ -322,11 +322,13 @@ class OrderDetails(MinimalOrderDetails):
         """
         if self.order_type not in self.trading_rule.supported_order_types:
             raise ValueError(
-                f"{self.order_type} is not in the list of supported order types"
+                f"{self.order_type} is not in the list of supported order types: {self.trading_rule.supported_order_types}"
             )
-        if self.order_modifiers.issubset(self.trading_rule.supported_order_modifiers):
+        if not self.order_modifiers.issubset(
+            self.trading_rule.supported_order_modifiers
+        ):
             raise ValueError(
-                f"{self.order_modifiers} is not in the list of supported order modifiers"
+                f"{self.order_modifiers} is not in the list of supported order modifiers: {self.trading_rule.supported_order_modifiers}"
             )
 
         current_timestamp = current_timestamp or time.time()

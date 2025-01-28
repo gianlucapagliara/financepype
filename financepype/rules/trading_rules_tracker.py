@@ -12,13 +12,13 @@ Example:
     >>> class BinanceRulesTracker(TradingRulesTracker):
     ...     async def update_trading_rules(self):
     ...         rules = await self.exchange.fetch_trading_rules()
-    ...         self.set_trading_rules(rules)
     >>> tracker = BinanceRulesTracker()
     >>> await tracker.update_trading_rules()
     >>> print(await tracker.is_trading_pair_valid("BTC-USDT"))
 """
 
 import asyncio
+import logging
 from abc import ABC, abstractmethod
 
 from bidict import bidict
@@ -63,6 +63,14 @@ class TradingRulesTracker(ABC):
         self._trading_rules: dict[TradingPair, TradingRule] = {}
         self._trading_pair_symbol_map: bidict[TradingPair, str] = bidict()
         self._mapping_initialization_lock = asyncio.Lock()
+
+    @classmethod
+    @abstractmethod
+    def logger(cls) -> logging.Logger:
+        """
+        Returns the logger for the trading rules tracker.
+        """
+        raise NotImplementedError
 
     @property
     def trading_rules(self) -> dict[TradingPair, TradingRule]:
@@ -294,3 +302,29 @@ class TradingRulesTracker(ABC):
             NotImplementedError: If the subclass doesn't implement this method
         """
         raise NotImplementedError
+
+    async def update_loop(self, interval_seconds: float):
+        """
+        Updates the trading rules by requesting the latest definitions from the exchange.
+        Executes regularly every 30 minutes
+        """
+        while True:
+            try:
+                await asyncio.gather(self.update_trading_rules())
+                await self._sleep(interval_seconds)
+            except NotImplementedError:
+                raise
+            except asyncio.CancelledError:
+                raise
+            except Exception:
+                self.logger().error(
+                    "Unexpected error while fetching trading rules.",
+                    exc_info=True,
+                )
+                await self._sleep(0.5)
+
+    async def _sleep(self, seconds: float) -> None:
+        """
+        Sleeps for a given number of seconds.
+        """
+        await asyncio.sleep(seconds)
