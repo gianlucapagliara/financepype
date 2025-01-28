@@ -7,11 +7,7 @@ from typing import Any, ClassVar, cast
 import pytest
 from pydantic import ValidationError
 
-from financepype.assets.blockchain import (
-    BlockchainAsset,
-    BlockchainAssetData,
-    BlockchainAssetIdentifier,
-)
+from financepype.assets.blockchain import BlockchainAsset, BlockchainAssetData
 from financepype.operations.transactions.models import (
     BlockchainTransactionState,
     BlockchainTransactionUpdate,
@@ -20,7 +16,7 @@ from financepype.operations.transactions.transaction import BlockchainTransactio
 from financepype.operators.blockchains.blockchain import Blockchain
 from financepype.operators.blockchains.identifier import BlockchainIdentifier
 from financepype.operators.blockchains.models import BlockchainConfiguration
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import NamedOwnerIdentifier, OwnerIdentifier
 from financepype.owners.wallet import BlockchainWallet, BlockchainWalletConfiguration
 from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 from financepype.platforms.platform import Platform
@@ -67,7 +63,7 @@ class MockBlockchainTransaction(BlockchainTransaction):
         signed_transaction: Any | None = None,
     ) -> None:
         if owner_identifier is None:
-            owner_identifier = OwnerIdentifier(
+            owner_identifier = NamedOwnerIdentifier(
                 name="test_owner", platform=Platform(identifier="test_platform")
             )
         super().__init__(
@@ -123,7 +119,7 @@ class MockBlockchainWallet(BlockchainWallet):
         self._transaction_updates: dict[str, BlockchainTransactionUpdate] = {}
 
     @property
-    def chain(self) -> Blockchain:
+    def blockchain(self) -> Blockchain:
         return self._chain
 
     @property
@@ -188,11 +184,8 @@ def blockchain_platform() -> BlockchainPlatform:
 def test_asset(blockchain_platform: BlockchainPlatform) -> BlockchainAsset:
     """Create a test asset fixture."""
     test_id = MockBlockchainIdentifier(raw="0x123", string="0x123")
-    identifier = BlockchainAssetIdentifier(value="0x123", identifier=test_id)
     data = BlockchainAssetData(name="Test Token", symbol="TEST", decimals=18)
-    return BlockchainAsset(
-        platform=blockchain_platform, identifier=identifier, data=data
-    )
+    return BlockchainAsset(platform=blockchain_platform, identifier=test_id, data=data)
 
 
 @pytest.fixture
@@ -201,7 +194,7 @@ def wallet_config(
 ) -> BlockchainWalletConfiguration:
     """Create a wallet configuration fixture."""
     test_platform = Platform(identifier="test_platform")
-    owner_id = OwnerIdentifier(name="test_owner", platform=test_platform)
+    owner_id = NamedOwnerIdentifier(name="test_owner", platform=test_platform)
     return BlockchainWalletConfiguration(
         chain=blockchain_platform,
         tracked_assets={test_asset},
@@ -222,7 +215,7 @@ def test_wallet_configuration_validation(
     """Test wallet configuration validation."""
     # Valid configuration
     test_platform = Platform(identifier="test_platform")
-    owner_id = OwnerIdentifier(name="test_owner", platform=test_platform)
+    owner_id = NamedOwnerIdentifier(name="test_owner", platform=test_platform)
     config = BlockchainWalletConfiguration(
         chain=blockchain_platform,
         tracked_assets={test_asset},
@@ -258,7 +251,7 @@ def test_wallet_configuration_validation(
 def test_wallet_initialization(wallet: MockBlockchainWallet) -> None:
     """Test wallet initialization."""
     assert not wallet.is_read_only
-    assert isinstance(wallet.chain, MockBlockchain)
+    assert isinstance(wallet.blockchain, MockBlockchain)
     assert wallet.transaction_tracker is not None
     assert len(wallet._pending_transaction_update) == 0
     assert len(wallet._tracked_assets) == 1

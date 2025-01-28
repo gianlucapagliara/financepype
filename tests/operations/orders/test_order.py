@@ -15,7 +15,7 @@ from financepype.operations.orders.models import (
     TradeUpdate,
 )
 from financepype.operations.orders.order import OrderOperation
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import NamedOwnerIdentifier, OwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -40,7 +40,7 @@ def test_quote_asset(test_platform: Platform) -> Asset:
 @pytest.fixture
 def test_owner_id(test_platform: Platform) -> OwnerIdentifier:
     """Create a test owner identifier."""
-    return OwnerIdentifier(name="test_owner", platform=test_platform)
+    return NamedOwnerIdentifier(name="test_owner", platform=test_platform)
 
 
 @pytest.fixture

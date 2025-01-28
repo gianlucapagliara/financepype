@@ -4,8 +4,12 @@ import pytest
 
 from financepype.assets.asset import Asset
 from financepype.assets.spot import SpotAsset
-from financepype.owners.owner import Owner, OwnerConfiguration
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import (
+    NamedOwnerIdentifier,
+    Owner,
+    OwnerConfiguration,
+    OwnerIdentifier,
+)
 from financepype.platforms.platform import Platform
 
 
@@ -17,7 +21,7 @@ class MockOwner(Owner):
 
 @pytest.fixture
 def owner_id(platform: Platform) -> OwnerIdentifier:
-    return OwnerIdentifier(name="test_trader", platform=platform)
+    return NamedOwnerIdentifier(name="test_trader", platform=platform)
 
 
 @pytest.fixture
@@ -27,7 +31,6 @@ def owner(owner_id: OwnerIdentifier) -> Owner:
 
 def test_owner_init(owner: Owner, owner_id: OwnerIdentifier) -> None:
     assert owner.identifier == owner_id
-    assert owner.name == "test_trader"
     assert owner.platform.identifier == "test_platform"
     assert owner.balance_tracker is not None
 

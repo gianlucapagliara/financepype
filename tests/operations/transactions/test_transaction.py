@@ -10,7 +10,7 @@ from financepype.operations.transactions.models import (
 )
 from financepype.operations.transactions.transaction import BlockchainTransaction
 from financepype.operators.blockchains.identifier import BlockchainIdentifier
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import NamedOwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -71,7 +71,7 @@ def platform():
 
 @pytest.fixture
 def owner_identifier(platform):
-    return OwnerIdentifier(name="test_owner", platform=platform)
+    return NamedOwnerIdentifier(name="test_owner", platform=platform)
 
 
 @pytest.fixture

@@ -4,11 +4,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from financepype.assets.blockchain import (
-    BlockchainAsset,
-    BlockchainAssetData,
-    BlockchainAssetIdentifier,
-)
+from financepype.assets.blockchain import BlockchainAsset, BlockchainAssetData
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.transactions.models import (
     BlockchainTransactionFee,
@@ -17,7 +13,7 @@ from financepype.operations.transactions.models import (
     BlockchainTransactionUpdate,
 )
 from financepype.operators.blockchains.identifier import BlockchainIdentifier
-from financepype.platforms.platform import Platform
+from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 
 
 class MockBlockchainIdentifier(BlockchainIdentifier):
@@ -57,10 +53,8 @@ def test_blockchain_transaction_fee_defaults() -> None:
 
 def test_blockchain_transaction_fee_with_asset() -> None:
     """Test BlockchainTransactionFee with a specific asset."""
-    platform = Platform(identifier="ethereum")
-    identifier = BlockchainAssetIdentifier(
-        value="0x123", identifier=MockBlockchainIdentifier(raw="0x123", string="0x123")
-    )
+    platform = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    identifier = MockBlockchainIdentifier(raw="0x123", string="0x123")
     data = BlockchainAssetData(name="Test Token", symbol="TEST", decimals=18)
     asset = BlockchainAsset(platform=platform, identifier=identifier, data=data)
 
@@ -73,12 +67,10 @@ def test_blockchain_transaction_fee_with_asset() -> None:
 def test_blockchain_transaction_receipt() -> None:
     """Test BlockchainTransactionReceipt creation and immutability."""
     transaction_id = MockBlockchainIdentifier(raw="0x123", string="0x123")
-    data = {"gas_used": 21000, "status": 1}
 
-    receipt = BlockchainTransactionReceipt(transaction_id=transaction_id, data=data)
+    receipt = BlockchainTransactionReceipt(transaction_id=transaction_id)
 
     assert receipt.transaction_id == transaction_id
-    assert receipt.data == data
 
     # Test immutability
     with pytest.raises(ValidationError):

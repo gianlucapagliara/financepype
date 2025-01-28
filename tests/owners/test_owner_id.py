@@ -1,10 +1,10 @@
-from financepype.owners.owner_id import OwnerIdentifier
+from financepype.owners.owner import NamedOwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
 def test_owner_identifier_init() -> None:
     platform = Platform(identifier="binance")
-    owner = OwnerIdentifier(name="trader1", platform=platform)
+    owner = NamedOwnerIdentifier(name="trader1", platform=platform)
 
     assert owner.name == "trader1"
     assert owner.platform == platform
@@ -16,10 +16,10 @@ def test_owner_identifier_equality() -> None:
     platform2 = Platform(identifier="binance")
     platform3 = Platform(identifier="ftx")
 
-    owner1 = OwnerIdentifier(name="trader1", platform=platform1)
-    owner2 = OwnerIdentifier(name="trader1", platform=platform2)
-    owner3 = OwnerIdentifier(name="trader1", platform=platform3)
-    owner4 = OwnerIdentifier(name="trader2", platform=platform1)
+    owner1 = NamedOwnerIdentifier(name="trader1", platform=platform1)
+    owner2 = NamedOwnerIdentifier(name="trader1", platform=platform2)
+    owner3 = NamedOwnerIdentifier(name="trader1", platform=platform3)
+    owner4 = NamedOwnerIdentifier(name="trader2", platform=platform1)
 
     # Same name and platform should be equal
     assert owner1 == owner2
@@ -35,8 +35,8 @@ def test_owner_identifier_hash() -> None:
     platform1 = Platform(identifier="binance")
     platform2 = Platform(identifier="binance")
 
-    owner1 = OwnerIdentifier(name="trader1", platform=platform1)
-    owner2 = OwnerIdentifier(name="trader1", platform=platform2)
+    owner1 = NamedOwnerIdentifier(name="trader1", platform=platform1)
+    owner2 = NamedOwnerIdentifier(name="trader1", platform=platform2)
 
     # Same owners should have same hash
     assert hash(owner1) == hash(owner2)
@@ -52,6 +52,6 @@ def test_owner_identifier_hash() -> None:
 
 def test_owner_identifier_repr() -> None:
     platform = Platform(identifier="binance")
-    owner = OwnerIdentifier(name="trader1", platform=platform)
+    owner = NamedOwnerIdentifier(name="trader1", platform=platform)
 
     assert repr(owner) == "<Owner: binance:trader1>"
