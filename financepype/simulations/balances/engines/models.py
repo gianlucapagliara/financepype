@@ -9,14 +9,14 @@ support for decimal arithmetic to ensure precise financial calculations.
 
 Key Components:
 1. Enums for categorizing cashflows:
-   - CashflowReason: Purpose of the cashflow (operation, fee, PnL)
-   - InvolvementType: When the cashflow occurs (opening, closing)
-   - CashflowType: Direction of the cashflow (inflow, outflow)
+    - CashflowReason: Purpose of the cashflow (operation, fee, PnL)
+    - InvolvementType: When the cashflow occurs (opening, closing)
+    - CashflowType: Direction of the cashflow (inflow, outflow)
 
 2. Models:
-   - AssetCashflow: Individual asset movement with amount and metadata
-   - OrderDetails: Complete specification of a trading order
-   - OperationSimulationResult: Results of simulating an operation
+    - AssetCashflow: Individual asset movement with amount and metadata
+    - OrderDetails: Complete specification of a trading order
+    - OperationSimulationResult: Results of simulating an operation
 
 Example:
     >>> # Create an order
@@ -40,9 +40,9 @@ Example:
 import time
 from decimal import Decimal
 from enum import Enum
-from typing import Any
+from typing import Any, Self, cast
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from financepype.assets.asset import Asset
 from financepype.constants import s_decimal_0, s_decimal_NaN
@@ -64,11 +64,13 @@ class CashflowReason(Enum):
 
     This enum categorizes the purpose of each cashflow:
     - OPERATION: Direct result of the trading operation (e.g., buying/selling)
+    - MARGIN: Margin used for the operation
     - FEE: Trading fees, commissions, etc.
     - PNL: Profit or loss from the operation
     """
 
     OPERATION = "operation"
+    MARGIN = "margin"
     FEE = "fee"
     PNL = "pnl"
 
@@ -129,9 +131,18 @@ class AssetCashflow(BaseModel):
     reason: CashflowReason = Field(description="Purpose of the flow")
     amount: Decimal = Field(
         default=Decimal(0),
-        ge=0,
+        allow_inf_nan=True,
         description="Amount of the asset (always positive)",
     )
+
+    @field_validator("amount")
+    def validate_amount(cls, value: Decimal) -> Decimal:
+        """Validate the amount of the asset."""
+        if value.is_nan():
+            return s_decimal_NaN
+        if value < s_decimal_0:
+            raise ValueError("Amount must be positive or Inf/NaN")
+        return value
 
     @property
     def is_outflow(self) -> bool:
@@ -146,6 +157,9 @@ class AssetCashflow(BaseModel):
     @property
     def cashflow_amount(self) -> Decimal:
         """The signed amount of the cashflow (negative for outflows)."""
+        if self.amount.is_nan():
+            return s_decimal_NaN
+
         if self.is_outflow:
             return -self.amount
         return self.amount
@@ -164,6 +178,27 @@ class MinimalOrderDetails(BaseModel):
     position_action: PositionAction = Field(
         description="Opening/closing action",
     )
+
+    def split_order_details(self) -> list[Self]:
+        """Split the order details into multiple orders if needed.
+
+        This method is used to split the order details into multiple orders if
+        the position action is FLIP.
+        """
+        if self.position_action != PositionAction.FLIP:
+            return [self]
+
+        close_order = self.model_copy(
+            update={
+                "position_action": PositionAction.CLOSE,
+            }
+        )
+        open_order = self.model_copy(
+            update={
+                "position_action": PositionAction.OPEN,
+            }
+        )
+        return [close_order, open_order]
 
 
 class OrderDetails(MinimalOrderDetails):
@@ -322,13 +357,11 @@ class OrderDetails(MinimalOrderDetails):
         """
         if self.order_type not in self.trading_rule.supported_order_types:
             raise ValueError(
-                f"{self.order_type} is not in the list of supported order types: {self.trading_rule.supported_order_types}"
+                f"{self.order_type} is not in the list of supported order types"
             )
-        if not self.order_modifiers.issubset(
-            self.trading_rule.supported_order_modifiers
-        ):
+        if self.order_modifiers.issubset(self.trading_rule.supported_order_modifiers):
             raise ValueError(
-                f"{self.order_modifiers} is not in the list of supported order modifiers: {self.trading_rule.supported_order_modifiers}"
+                f"{self.order_modifiers} is not in the list of supported order modifiers"
             )
 
         current_timestamp = current_timestamp or time.time()
@@ -368,6 +401,25 @@ class OrderDetails(MinimalOrderDetails):
                 f"maximum notional size {self.trading_rule.max_notional_size}. "
                 "The order will not be created."
             )
+
+    def split_order_details(self) -> list[Self]:
+        if self.position_action != PositionAction.FLIP:
+            return [self]
+
+        close_order = self.model_copy(
+            update={
+                "amount": cast(Position, self.current_position).amount,
+                "position_action": PositionAction.CLOSE,
+            }
+        )
+        open_order = self.model_copy(
+            update={
+                "amount": self.amount - close_order.amount,
+                "position_action": PositionAction.OPEN,
+                "current_position": None,
+            }
+        )
+        return [close_order, open_order]
 
 
 class OperationSimulationResult(BaseModel):

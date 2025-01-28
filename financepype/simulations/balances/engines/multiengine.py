@@ -31,6 +31,10 @@ from financepype.markets.market import InstrumentType
 from financepype.markets.trading_pair import TradingPair
 from financepype.simulations.balances.engines.engine import BalanceEngine
 from financepype.simulations.balances.engines.models import AssetCashflow, OrderDetails
+from financepype.simulations.balances.engines.option import (
+    InverseOptionBalanceEngine,
+    OptionBalanceEngine,
+)
 from financepype.simulations.balances.engines.perpetual import (
     InversePerpetualBalanceEngine,
     PerpetualBalanceEngine,
@@ -77,6 +81,10 @@ class BalanceMultiEngine(BalanceEngine):
         InstrumentType.SPOT: SpotBalanceEngine,
         InstrumentType.PERPETUAL: PerpetualBalanceEngine,
         InstrumentType.INVERSE_PERPETUAL: InversePerpetualBalanceEngine,
+        InstrumentType.CALL_OPTION: OptionBalanceEngine,
+        InstrumentType.PUT_OPTION: OptionBalanceEngine,
+        InstrumentType.INVERSE_CALL_OPTION: InverseOptionBalanceEngine,
+        InstrumentType.INVERSE_PUT_OPTION: InverseOptionBalanceEngine,
     }
 
     @classmethod

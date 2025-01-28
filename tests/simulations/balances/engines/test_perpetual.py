@@ -372,11 +372,11 @@ def test_get_involved_assets_open(
 ) -> None:
     """Test involved assets for opening position."""
     assets = TestPerpetualBalanceEngine.get_involved_assets(order_details)
-    assert len(assets) == 4  # Margin outflow, Position inflow, Opening fee, Closing fee
+    assert len(assets) == 3  # Margin outflow, Opening fee outflow, Position inflow
     assert any(
         a.asset == quote_asset
         and a.cashflow_type == CashflowType.OUTFLOW
-        and a.reason == CashflowReason.OPERATION
+        and a.reason == CashflowReason.MARGIN
         for a in assets
     ), "Missing margin outflow"
     assert any(
@@ -390,13 +390,6 @@ def test_get_involved_assets_open(
         and a.involvement_type == InvolvementType.OPENING
         for a in assets
     ), "Missing opening fee"
-    assert any(
-        a.asset == quote_asset
-        and a.cashflow_type == CashflowType.OUTFLOW
-        and a.reason == CashflowReason.FEE
-        and a.involvement_type == InvolvementType.CLOSING
-        for a in assets
-    ), "Missing closing fee"
 
 
 def test_get_involved_assets_close(
@@ -435,25 +428,25 @@ def test_get_involved_assets_close(
         fee=order_details.fee,
     )
     assets = TestPerpetualBalanceEngine.get_involved_assets(close_order_details)
-    assert (
-        len(assets) == 5
-    )  # Position outflow, Margin return, PnL flow, Opening fee, Closing fee
+    assert len(assets) == 4  # Position outflow, Margin return, PnL flow, Closing fee
+    assert any(
+        a.asset == contract
+        and a.cashflow_type == CashflowType.OUTFLOW
+        and a.reason == CashflowReason.OPERATION
+        for a in assets
+    ), "Missing position outflow"
     assert any(
         a.asset == quote_asset
         and a.cashflow_type == CashflowType.INFLOW
-        and a.reason == CashflowReason.OPERATION
+        and a.reason == CashflowReason.MARGIN
         for a in assets
     ), "Missing margin return"
     assert any(
-        a.asset == quote_asset and a.reason == CashflowReason.PNL for a in assets
-    ), "Missing PnL flow"
-    assert any(
         a.asset == quote_asset
-        and a.cashflow_type == CashflowType.OUTFLOW
-        and a.reason == CashflowReason.FEE
-        and a.involvement_type == InvolvementType.OPENING
+        and a.cashflow_type == CashflowType.INFLOW
+        and a.reason == CashflowReason.PNL
         for a in assets
-    ), "Missing opening fee"
+    ), "Missing PnL flow"
     assert any(
         a.asset == quote_asset
         and a.cashflow_type == CashflowType.OUTFLOW
@@ -483,7 +476,7 @@ def test_get_involved_assets_flip(
         unrealized_pnl=Decimal("0"),
         liquidation_price=Decimal("55000"),
     )
-    # Create a new order details with flip position action
+    # Create a new order details for flipping
     flip_order_details = OrderDetails(
         platform=order_details.platform,
         trading_pair=order_details.trading_pair,
@@ -499,63 +492,48 @@ def test_get_involved_assets_flip(
         fee=order_details.fee,
     )
     assets = TestPerpetualBalanceEngine.get_involved_assets(flip_order_details)
-    # Should have 8 asset flows:
+    # Should have 7 asset flows:
     # 1. Existing position outflow (opening)
     # 2. New margin outflow (opening)
-    # 3. Old margin inflow (opening)
-    # 4. New position inflow (closing)
-    # 5. PnL inflow (closing)
-    # 6. PnL outflow (closing)
-    # 7. Opening fee outflow
-    # 8. Closing fee outflow
-    assert len(assets) == 8
+    # 3. New position inflow (closing)
+    # 4. PnL flow (closing)
+    # 5. Opening fee outflow
+    # 6. Closing fee outflow
+    # 7. Old margin inflow (closing)
+    assert len(assets) == 7
 
     # Verify opening flows
     assert any(
         a.asset == quote_asset
         and a.cashflow_type == CashflowType.OUTFLOW
-        and a.reason == CashflowReason.OPERATION
+        and a.reason == CashflowReason.MARGIN
         and a.involvement_type == InvolvementType.OPENING
         for a in assets
     ), "Missing margin outflow"
 
     assert any(
-        a.asset == quote_asset
-        and a.cashflow_type == CashflowType.INFLOW
-        and a.reason == CashflowReason.OPERATION
-        and a.involvement_type == InvolvementType.OPENING
-        for a in assets
-    ), "Missing old margin inflow"
-
-    # Verify position flows
-    assert any(
-        a.cashflow_type == CashflowType.OUTFLOW
+        a.asset == contract
+        and a.cashflow_type == CashflowType.OUTFLOW
         and a.reason == CashflowReason.OPERATION
         and a.involvement_type == InvolvementType.OPENING
         for a in assets
     ), "Missing position outflow"
 
+    # Verify closing flows
     assert any(
-        a.cashflow_type == CashflowType.INFLOW
+        isinstance(a.asset, DerivativeContract)
+        and a.cashflow_type == CashflowType.INFLOW
         and a.reason == CashflowReason.OPERATION
         and a.involvement_type == InvolvementType.CLOSING
         for a in assets
     ), "Missing position inflow"
 
-    # Verify PnL flows
     assert any(
         a.asset == quote_asset
-        and a.cashflow_type == CashflowType.INFLOW
         and a.reason == CashflowReason.PNL
+        and a.involvement_type == InvolvementType.CLOSING
         for a in assets
-    ), "Missing PnL inflow"
-
-    assert any(
-        a.asset == quote_asset
-        and a.cashflow_type == CashflowType.OUTFLOW
-        and a.reason == CashflowReason.PNL
-        for a in assets
-    ), "Missing PnL outflow"
+    ), "Missing PnL flow"
 
     # Verify fee flows
     assert any(
@@ -590,12 +568,50 @@ def test_get_opening_inflows(order_details: OrderDetails) -> None:
     assert len(inflows) == 0  # No inflows on opening
 
 
-def test_get_closing_outflows_with_fee_deduction(order_details: OrderDetails) -> None:
+def test_get_closing_outflows_with_fee_deduction(
+    order_details: OrderDetails, platform: Platform
+) -> None:
     """Test closing outflows with fee deducted from returns."""
-    order_details.fee.impact_type = FeeImpactType.DEDUCTED_FROM_RETURNS
-    outflows = TestPerpetualBalanceEngine.get_closing_outflows(order_details)
+    # Create a position to close
+    contract = DerivativeContract(
+        platform=platform,
+        identifier=AssetIdentifier(value=order_details.trading_pair.name),
+        side=DerivativeSide.SHORT,  # Opposite of BUY which is LONG
+    )
+    position = Position(
+        asset=contract,
+        amount=Decimal("1"),
+        leverage=Decimal("10"),
+        entry_price=Decimal("50000"),
+        entry_index_price=Decimal("50000"),
+        margin=Decimal("5000"),
+        unrealized_pnl=Decimal("0"),
+        liquidation_price=Decimal("55000"),
+    )
+    # Create a new order details with CLOSE position action and fee deducted from returns
+    close_order_details = OrderDetails(
+        platform=order_details.platform,
+        trading_pair=order_details.trading_pair,
+        trading_rule=order_details.trading_rule,
+        amount=order_details.amount,
+        price=order_details.price,
+        leverage=order_details.leverage,
+        trade_type=order_details.trade_type,
+        order_type=order_details.order_type,
+        position_action=PositionAction.CLOSE,
+        index_price=order_details.index_price,
+        current_position=position,
+        fee=OperationFee(
+            asset=None,
+            amount=Decimal("0.1"),
+            fee_type=FeeType.PERCENTAGE,
+            impact_type=FeeImpactType.DEDUCTED_FROM_RETURNS,
+        ),
+    )
+    outflows = TestPerpetualBalanceEngine.get_closing_outflows(close_order_details)
     assert len(outflows) == 1  # Fee only
-    assert outflows[0].amount == Decimal("50")
+    assert outflows[0].reason == CashflowReason.FEE
+    assert outflows[0].involvement_type == InvolvementType.CLOSING
 
 
 def test_get_closing_inflows_with_profit(
@@ -780,13 +796,13 @@ def test_get_opening_outflows_flip(
             flow
             for flow in outflows
             if flow.asset == quote_asset
-            and flow.reason == CashflowReason.OPERATION
+            and flow.reason == CashflowReason.MARGIN
             and flow.involvement_type == InvolvementType.OPENING
         ),
         None,
     )
     assert margin_outflow is not None
-    assert margin_outflow.amount == Decimal("5000")  # (1 * 50000) / 10
+    assert margin_outflow.amount == Decimal("2500")  # Current position margin
 
     # Verify position outflow
     position_outflow = next(
@@ -814,7 +830,7 @@ def test_get_opening_outflows_flip(
         None,
     )
     assert fee_outflow is not None
-    assert fee_outflow.amount == Decimal("50")  # 0.1% of notional value
+    assert fee_outflow.amount == Decimal("25")  # 0.1% of notional value (50000 * 0.5)
 
 
 def test_get_closing_outflows_flip(
@@ -872,7 +888,7 @@ def test_get_closing_outflows_flip(
         None,
     )
     assert fee_outflow is not None
-    assert fee_outflow.amount == Decimal("50")  # 0.1% of notional value
+    assert fee_outflow.amount == Decimal("25")  # 0.1% of notional value (25000)
 
     # Verify PnL outflow
     pnl_outflow = next(
@@ -925,7 +941,7 @@ def test_get_closing_inflows_flip(
         fee=order_details.fee,
     )
     inflows = TestPerpetualBalanceEngine.get_closing_inflows(flip_order_details)
-    assert len(inflows) == 1  # New position inflow
+    assert len(inflows) == 2  # Margin return and position inflow
 
     # Verify position inflow
     position_inflow = next(
@@ -978,18 +994,5 @@ def test_get_opening_inflows_flip(
         fee=order_details.fee,
     )
     inflows = TestPerpetualBalanceEngine.get_opening_inflows(flip_order_details)
-    assert len(inflows) == 1  # Old margin return
-
-    # Verify margin inflow
-    margin_inflow = next(
-        (
-            flow
-            for flow in inflows
-            if flow.asset == quote_asset
-            and flow.reason == CashflowReason.OPERATION
-            and flow.involvement_type == InvolvementType.OPENING
-        ),
-        None,
-    )
-    assert margin_inflow is not None
-    assert margin_inflow.amount == Decimal("2500")  # Current position margin
+    # No inflows for flip operation in opening phase
+    assert len(inflows) == 0

@@ -72,8 +72,9 @@ class BasePerpetualBalanceEngine(BalanceEngine):
     Subclasses must implement:
     - _get_outflow_asset: Define which asset is used for margin/collateral
     - _calculate_margin: Define margin calculation logic
-    - _calculate_index_price: Define index price calculation logic
     - _calculate_pnl: Define PnL calculation logic
+    - _calculate_index_price: Define index price calculation logic
+    - _calculate_liquidation_price: Define liquidation price calculation logic
     """
 
     @classmethod
@@ -90,6 +91,12 @@ class BasePerpetualBalanceEngine(BalanceEngine):
 
     @classmethod
     @abstractmethod
+    def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
+        """Calculate the PnL for a position."""
+        raise NotImplementedError
+
+    @classmethod
+    @abstractmethod
     def _calculate_index_price(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the index price for a position."""
         raise NotImplementedError
@@ -98,12 +105,6 @@ class BasePerpetualBalanceEngine(BalanceEngine):
     @abstractmethod
     def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the liquidation price for a position."""
-        raise NotImplementedError
-
-    @classmethod
-    @abstractmethod
-    def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
-        """Calculate the PnL for a position."""
         raise NotImplementedError
 
     @classmethod
@@ -212,172 +213,109 @@ class BasePerpetualBalanceEngine(BalanceEngine):
             list[AssetCashflow]: List of involved assets
         """
         result: list[AssetCashflow] = []
-        collateral_asset = cls._get_outflow_asset(order_details)
-        potential_opening_position_asset = AssetFactory.get_asset(
-            order_details.platform,
-            order_details.trading_pair.name,
-            side=order_details.trade_type.to_position_side(),
-        )
-        potential_closing_position_asset = AssetFactory.get_asset(
-            order_details.platform,
-            order_details.trading_pair.name,
-            side=order_details.trade_type.opposite().to_position_side(),
-        )
 
         if order_details.position_action == PositionAction.FLIP:
-            # For flip, we'll need both closing the existing position and opening a new one
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=potential_closing_position_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=potential_opening_position_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            # Possible PnLs
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.PNL,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.PNL,
-                )
-            )
-        elif order_details.position_action == PositionAction.CLOSE:
-            result.append(
-                AssetCashflow(
-                    asset=potential_closing_position_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.PNL,
-                )
-            )
-        elif order_details.position_action == PositionAction.OPEN:
-            result.append(
-                AssetCashflow(
-                    asset=collateral_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
-            result.append(
-                AssetCashflow(
-                    asset=potential_opening_position_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
-                )
-            )
+            order_details_list = order_details.split_order_details()
+            for order_details in order_details_list:
+                result.extend(cls.get_involved_assets(order_details))
+            return result
 
-        # Possible Fees
-        fee_asset = cls._get_outflow_asset(order_details)
-        result.append(
-            AssetCashflow(
-                asset=fee_asset,
-                involvement_type=InvolvementType.OPENING,
-                cashflow_type=CashflowType.OUTFLOW,
-                reason=CashflowReason.FEE,
+        collateral_asset = cls._get_outflow_asset(order_details)
+
+        if order_details.position_action in [PositionAction.OPEN]:
+            position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.to_position_side(),
             )
-        )
-        result.append(
-            AssetCashflow(
-                asset=fee_asset,
-                involvement_type=InvolvementType.CLOSING,
-                cashflow_type=CashflowType.OUTFLOW,
-                reason=CashflowReason.FEE,
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.MARGIN,
+                )
             )
-        )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.FEE,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=position_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+        elif order_details.position_action in [PositionAction.CLOSE]:
+            position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.opposite().to_position_side(),
+            )
+            result.append(
+                AssetCashflow(
+                    asset=position_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.FEE,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.MARGIN,
+                )
+            )
+            result.append(
+                AssetCashflow(
+                    asset=collateral_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.PNL,
+                )
+            )
 
         return result
 
     @classmethod
     def get_opening_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
+
+        if order_details.position_action == PositionAction.FLIP:
+            order_details_list = order_details.split_order_details()
+            for order_details in order_details_list:
+                result.extend(cls.get_opening_outflows(order_details))
+            return result
+
         collateral_asset = cls._get_outflow_asset(order_details)
 
-        if order_details.position_action in [PositionAction.OPEN, PositionAction.FLIP]:
+        if order_details.position_action == PositionAction.OPEN:
             margin_amount = cls._calculate_margin(order_details)
             result.append(
                 AssetCashflow(
                     asset=collateral_asset,
                     involvement_type=InvolvementType.OPENING,
                     cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
+                    reason=CashflowReason.MARGIN,
                     amount=margin_amount,
                 )
             )
-
-        if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
-            closing_position_asset = AssetFactory.get_asset(
-                order_details.platform,
-                order_details.trading_pair.name,
-                side=order_details.trade_type.opposite().to_position_side(),
-            )
-            position_amount = order_details.amount
-            if order_details.position_action == PositionAction.FLIP:
-                current_position = cast(Position, order_details.current_position)
-                position_amount = current_position.amount
-            result.append(
-                AssetCashflow(
-                    asset=closing_position_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.OPERATION,
-                    amount=position_amount,
-                )
-            )
-
-        # Fee
-        if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
             fee_asset = cls._get_expected_fee_asset(order_details)
             result.append(
                 AssetCashflow(
@@ -389,31 +327,59 @@ class BasePerpetualBalanceEngine(BalanceEngine):
                 )
             )
 
+        if order_details.position_action == PositionAction.CLOSE:
+            closing_position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.opposite().to_position_side(),
+            )
+            position_amount = order_details.amount
+            result.append(
+                AssetCashflow(
+                    asset=closing_position_asset,
+                    involvement_type=InvolvementType.OPENING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.OPERATION,
+                    amount=position_amount,
+                )
+            )
+
         return result
 
     @classmethod
     def get_opening_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
-        if order_details.position_action != PositionAction.FLIP:
+
+        if order_details.position_action == PositionAction.FLIP:
+            order_details_list = order_details.split_order_details()
+            for order_details in order_details_list:
+                result.extend(cls.get_opening_inflows(order_details))
             return result
 
-        current_position = cast(Position, order_details.current_position)
-        collateral_asset = cls._get_outflow_asset(order_details)
-        margin_amount = current_position.margin
-        result.append(
-            AssetCashflow(
-                asset=collateral_asset,
-                involvement_type=InvolvementType.OPENING,
-                cashflow_type=CashflowType.INFLOW,
-                reason=CashflowReason.OPERATION,
-                amount=margin_amount,
-            )
-        )
         return result
 
     @classmethod
     def get_closing_outflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
+
+        if order_details.position_action == PositionAction.FLIP:
+            order_details_list = order_details.split_order_details()
+            for order_details in order_details_list:
+                result.extend(cls.get_closing_outflows(order_details))
+            return result
+
+        # Calculate PnL
+        if order_details.position_action in [PositionAction.CLOSE]:
+            fee_asset = cls._get_expected_fee_asset(order_details)
+            result.append(
+                AssetCashflow(
+                    asset=fee_asset,
+                    involvement_type=InvolvementType.CLOSING,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.FEE,
+                    amount=cls._calculate_fee_amount(order_details),
+                )
+            )
 
         # Calculate PnL
         if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
@@ -430,36 +396,26 @@ class BasePerpetualBalanceEngine(BalanceEngine):
                     )
                 )
 
-        # Fee deducted from returns
-        if order_details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
-            fee_asset = cls._get_expected_fee_asset(order_details)
-            result.append(
-                AssetCashflow(
-                    asset=fee_asset,
-                    involvement_type=InvolvementType.CLOSING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.FEE,
-                    amount=cls._calculate_fee_amount(order_details),
-                )
-            )
-
         return result
 
     @classmethod
     def get_closing_inflows(cls, order_details: OrderDetails) -> list[AssetCashflow]:
         result: list[AssetCashflow] = []
-        collateral_asset = cls._get_outflow_asset(order_details)
 
-        if order_details.position_action in [PositionAction.OPEN, PositionAction.FLIP]:
+        if order_details.position_action == PositionAction.FLIP:
+            order_details_list = order_details.split_order_details()
+            for order_details in order_details_list:
+                result.extend(cls.get_closing_inflows(order_details))
+            return result
+
+        collateral_asset = cls._get_outflow_asset(order_details)
+        if order_details.position_action in [PositionAction.OPEN]:
             opening_position_asset = AssetFactory.get_asset(
                 order_details.platform,
                 order_details.trading_pair.name,
                 side=order_details.trade_type.to_position_side(),
             )
             position_amount = order_details.amount
-            if order_details.position_action == PositionAction.FLIP:
-                current_position = cast(Position, order_details.current_position)
-                position_amount = current_position.amount
             result.append(
                 AssetCashflow(
                     asset=opening_position_asset,
@@ -477,12 +433,11 @@ class BasePerpetualBalanceEngine(BalanceEngine):
                     asset=collateral_asset,
                     involvement_type=InvolvementType.CLOSING,
                     cashflow_type=CashflowType.INFLOW,
-                    reason=CashflowReason.OPERATION,
+                    reason=CashflowReason.MARGIN,
                     amount=current_position.margin,
                 )
             )
 
-        if order_details.position_action in [PositionAction.CLOSE, PositionAction.FLIP]:
             pnl = cls._calculate_pnl(order_details)
             if pnl > 0:
                 collateral_asset = cls._get_outflow_asset(order_details)
