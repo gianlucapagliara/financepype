@@ -4,6 +4,8 @@ from collections.abc import Coroutine, Iterable
 from datetime import timedelta
 from typing import Any, cast
 
+from pydantic import Field
+
 from financepype.assets.blockchain import BlockchainAsset
 from financepype.operations.transactions.events import TransactionPublications
 from financepype.operations.transactions.models import (
@@ -13,8 +15,31 @@ from financepype.operations.transactions.models import (
 from financepype.operations.transactions.tracker import BlockchainTransactionTracker
 from financepype.operations.transactions.transaction import BlockchainTransaction
 from financepype.operators.blockchains.blockchain import Blockchain
-from financepype.owners.owner import Owner, OwnerConfiguration
+from financepype.operators.blockchains.identifier import BlockchainIdentifier
+from financepype.owners.owner import Owner, OwnerConfiguration, OwnerIdentifier
 from financepype.platforms.blockchain import BlockchainPlatform
+
+
+class BlockchainWalletIdentifier(OwnerIdentifier):
+    """Identifier for blockchain wallet owners."""
+
+    platform: BlockchainPlatform
+    address: BlockchainIdentifier
+
+    @property
+    def identifier(self) -> str:
+        """
+        Get the unique identifier string for the wallet.
+
+        The identifier combines the platform identifier and wallet address
+        in the format "platform:address".
+
+        Returns:
+            str: The combined unique identifier string
+        """
+        if self.name is not None:
+            return f"{self.platform.identifier}:{self.name}"
+        return f"{self.platform.identifier}:{self.address.string}"
 
 
 class BlockchainWalletConfiguration(OwnerConfiguration):
@@ -25,16 +50,15 @@ class BlockchainWalletConfiguration(OwnerConfiguration):
     and transaction handling.
 
     Attributes:
-        chain (BlockchainPlatform): The blockchain platform
         real_time_balance_update (bool): Whether to update balances in real-time
         tracked_assets (set[BlockchainAsset] | None): Assets to track
         default_tx_wait (timedelta): Default transaction wait timeout
     """
 
-    chain: BlockchainPlatform
+    identifier: BlockchainWalletIdentifier
     real_time_balance_update: bool = True
-    tracked_assets: set[BlockchainAsset]
-    default_tx_wait: timedelta
+    tracked_assets: set[BlockchainAsset] = Field(default_factory=set)
+    default_tx_wait: timedelta = timedelta(minutes=2)
 
 
 class BlockchainWallet(Owner):

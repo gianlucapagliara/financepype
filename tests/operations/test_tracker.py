@@ -8,7 +8,7 @@ from eventspype.pub.publication import EventPublication
 
 from financepype.operations.operation import Operation
 from financepype.operations.tracker import OperationTracker
-from financepype.owners.owner import NamedOwnerIdentifier
+from financepype.owners.owner import OwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -25,7 +25,7 @@ class MockOperation(Operation):
         current_time = time.time()
         super().__init__(
             client_operation_id=client_operation_id,
-            owner_identifier=NamedOwnerIdentifier(
+            owner_identifier=OwnerIdentifier(
                 name="test_owner", platform=Platform(identifier="test")
             ),
             creation_timestamp=current_time,

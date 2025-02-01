@@ -1,12 +1,17 @@
 from typing import cast
 
 from financepype.operations.orders.tracker import OrderTracker
-from financepype.owners.owner import NamedOwnerIdentifier, Owner, OwnerConfiguration
+from financepype.owners.owner import Owner, OwnerConfiguration, OwnerIdentifier
 from financepype.platforms.centralized import CentralizedPlatform
 
 
-class AccountIdentifier(NamedOwnerIdentifier):
+class AccountIdentifier(OwnerIdentifier):
     platform: CentralizedPlatform
+    name: str
+
+    @property
+    def identifier(self) -> str:
+        return f"{self.platform.identifier}:{self.name}"
 
 
 class AccountConfiguration(OwnerConfiguration):

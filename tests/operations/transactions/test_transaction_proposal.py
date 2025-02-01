@@ -5,7 +5,7 @@ import pytest
 
 from financepype.operations.transactions.proposal import TransactionProposal
 from financepype.operations.transactions.transaction import BlockchainTransaction
-from financepype.owners.owner import NamedOwnerIdentifier, OwnerIdentifier
+from financepype.owners.owner import OwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -84,7 +84,7 @@ def platform():
 
 @pytest.fixture
 def owner_identifier(platform):
-    return NamedOwnerIdentifier(name="test_owner", platform=platform)
+    return OwnerIdentifier(name="test_owner", platform=platform)
 
 
 @pytest.fixture

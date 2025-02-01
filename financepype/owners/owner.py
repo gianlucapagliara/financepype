@@ -45,9 +45,9 @@ class OwnerIdentifier(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     platform: Platform = Field(description="The platform the owner belongs to")
+    name: str | None = Field(description="The name of the owner")
 
     @property
-    @abstractmethod
     def identifier(self) -> str:
         """Get the unique identifier string.
 
@@ -57,7 +57,9 @@ class OwnerIdentifier(BaseModel):
         Returns:
             str: The combined unique identifier
         """
-        raise NotImplementedError
+        if self.name is None:
+            return f"{self.platform.identifier}:unknown"
+        return f"{self.platform.identifier}:{self.name}"
 
     def __repr__(self) -> str:
         """Get the string representation of the owner identifier.
@@ -66,16 +68,6 @@ class OwnerIdentifier(BaseModel):
             str: A human-readable representation of the owner
         """
         return f"<Owner: {self.identifier}>"
-
-
-class NamedOwnerIdentifier(OwnerIdentifier):
-    """An owner identifier with a name."""
-
-    name: str = Field(description="The name of the owner")
-
-    @property
-    def identifier(self) -> str:
-        return f"{self.platform.identifier}:{self.name}"
 
 
 class OwnerConfiguration(BaseModel):

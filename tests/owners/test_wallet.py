@@ -16,8 +16,12 @@ from financepype.operations.transactions.transaction import BlockchainTransactio
 from financepype.operators.blockchains.blockchain import Blockchain
 from financepype.operators.blockchains.identifier import BlockchainIdentifier
 from financepype.operators.blockchains.models import BlockchainConfiguration
-from financepype.owners.owner import NamedOwnerIdentifier, OwnerIdentifier
-from financepype.owners.wallet import BlockchainWallet, BlockchainWalletConfiguration
+from financepype.owners.owner import OwnerIdentifier
+from financepype.owners.wallet import (
+    BlockchainWallet,
+    BlockchainWalletConfiguration,
+    BlockchainWalletIdentifier,
+)
 from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 from financepype.platforms.platform import Platform
 
@@ -63,7 +67,7 @@ class MockBlockchainTransaction(BlockchainTransaction):
         signed_transaction: Any | None = None,
     ) -> None:
         if owner_identifier is None:
-            owner_identifier = NamedOwnerIdentifier(
+            owner_identifier = OwnerIdentifier(
                 name="test_owner", platform=Platform(identifier="test_platform")
             )
         super().__init__(
@@ -115,7 +119,7 @@ class MockBlockchainWallet(BlockchainWallet):
 
     def __init__(self, configuration: BlockchainWalletConfiguration) -> None:
         super().__init__(configuration=configuration)
-        self._chain = MockBlockchain(platform=configuration.chain)
+        self._chain = MockBlockchain(platform=configuration.identifier.platform)
         self._transaction_updates: dict[str, BlockchainTransactionUpdate] = {}
 
     @property
@@ -181,6 +185,20 @@ def blockchain_platform() -> BlockchainPlatform:
 
 
 @pytest.fixture
+def wallet_address() -> BlockchainIdentifier:
+    return MockBlockchainIdentifier(raw="0x123", string="0x123")
+
+
+@pytest.fixture
+def wallet_identifier(
+    blockchain_platform: BlockchainPlatform, wallet_address: BlockchainIdentifier
+) -> BlockchainWalletIdentifier:
+    return BlockchainWalletIdentifier(
+        name="test_owner", platform=blockchain_platform, address=wallet_address
+    )
+
+
+@pytest.fixture
 def test_asset(blockchain_platform: BlockchainPlatform) -> BlockchainAsset:
     """Create a test asset fixture."""
     test_id = MockBlockchainIdentifier(raw="0x123", string="0x123")
@@ -190,16 +208,15 @@ def test_asset(blockchain_platform: BlockchainPlatform) -> BlockchainAsset:
 
 @pytest.fixture
 def wallet_config(
-    blockchain_platform: BlockchainPlatform, test_asset: BlockchainAsset
+    blockchain_platform: BlockchainPlatform,
+    test_asset: BlockchainAsset,
+    wallet_identifier: BlockchainWalletIdentifier,
 ) -> BlockchainWalletConfiguration:
     """Create a wallet configuration fixture."""
-    test_platform = Platform(identifier="test_platform")
-    owner_id = NamedOwnerIdentifier(name="test_owner", platform=test_platform)
+
     return BlockchainWalletConfiguration(
-        chain=blockchain_platform,
         tracked_assets={test_asset},
-        default_tx_wait=timedelta(minutes=2),
-        identifier=owner_id,
+        identifier=wallet_identifier,
     )
 
 
@@ -210,19 +227,12 @@ def wallet(wallet_config: BlockchainWalletConfiguration) -> MockBlockchainWallet
 
 
 def test_wallet_configuration_validation(
-    blockchain_platform: BlockchainPlatform, test_asset: BlockchainAsset
+    wallet_config: BlockchainWalletConfiguration,
+    test_asset: BlockchainAsset,
 ) -> None:
     """Test wallet configuration validation."""
     # Valid configuration
-    test_platform = Platform(identifier="test_platform")
-    owner_id = NamedOwnerIdentifier(name="test_owner", platform=test_platform)
-    config = BlockchainWalletConfiguration(
-        chain=blockchain_platform,
-        tracked_assets={test_asset},
-        default_tx_wait=timedelta(minutes=2),
-        identifier=owner_id,
-    )
-    assert config.chain == blockchain_platform
+    config = wallet_config
     assert test_asset in config.tracked_assets
     assert config.default_tx_wait == timedelta(minutes=2)
     assert config.real_time_balance_update is True
@@ -242,9 +252,7 @@ def test_wallet_configuration_validation(
     # Invalid tracked_assets type
     with pytest.raises(ValidationError):
         BlockchainWalletConfiguration(
-            chain=blockchain_platform,
             tracked_assets="invalid",  # type: ignore
-            default_tx_wait=timedelta(minutes=2),
         )
 
 

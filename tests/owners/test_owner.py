@@ -4,12 +4,7 @@ import pytest
 
 from financepype.assets.asset import Asset
 from financepype.assets.spot import SpotAsset
-from financepype.owners.owner import (
-    NamedOwnerIdentifier,
-    Owner,
-    OwnerConfiguration,
-    OwnerIdentifier,
-)
+from financepype.owners.owner import Owner, OwnerConfiguration, OwnerIdentifier
 from financepype.platforms.platform import Platform
 
 
@@ -21,7 +16,7 @@ class MockOwner(Owner):
 
 @pytest.fixture
 def owner_id(platform: Platform) -> OwnerIdentifier:
-    return NamedOwnerIdentifier(name="test_trader", platform=platform)
+    return OwnerIdentifier(name="test_trader", platform=platform)
 
 
 @pytest.fixture
