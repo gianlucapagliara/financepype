@@ -3,7 +3,7 @@ from collections.abc import Callable
 from decimal import Decimal
 from enum import Enum
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from financepype.markets.trading_pair import TradingPair
 
@@ -95,6 +95,8 @@ class FundingInfo(BaseModel):
         live_payment_frequency (int | None): Frequency of live payments
         utc_timestamp (int | None): Current timestamp
     """
+
+    model_config = ConfigDict(allow_inf_nan=True)
 
     trading_pair: TradingPair
     index_price: Decimal

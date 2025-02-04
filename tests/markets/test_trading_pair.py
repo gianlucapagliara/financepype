@@ -1,6 +1,6 @@
 import pytest
 
-from financepype.markets.market import InstrumentType
+from financepype.markets.market import MarketType
 from financepype.markets.trading_pair import TradingPair
 
 
@@ -9,7 +9,7 @@ def test_trading_pair_creation() -> None:
     assert pair.name == "BTC-USD"
     assert pair.base == "BTC"
     assert pair.quote == "USD"
-    assert pair.instrument_type == InstrumentType.SPOT
+    assert pair.market_type == MarketType.SPOT
 
 
 def test_trading_pair_validation() -> None:
@@ -28,7 +28,7 @@ def test_derivative_trading_pair() -> None:
     assert pair.name == "BTC-USD-PERPETUAL"
     assert pair.base == "BTC"
     assert pair.quote == "USD"
-    assert pair.instrument_type == InstrumentType.PERPETUAL
+    assert pair.market_type == MarketType.PERPETUAL
     assert pair.market_info.is_derivative
 
 
@@ -36,5 +36,5 @@ def test_option_trading_pair() -> None:
     pair = TradingPair(name="BTC-USD-CALL_OPTION-1W-20240101-50000")
     assert pair.base == "BTC"
     assert pair.quote == "USD"
-    assert pair.instrument_type == InstrumentType.CALL_OPTION
+    assert pair.market_type == MarketType.CALL_OPTION
     assert pair.market_info.is_option

@@ -283,7 +283,7 @@ class OrderOperation(Operation):
         return self.operator_operation_id
 
     def build_order_created_message(self) -> str:
-        if self.trading_pair.market_info.instrument_type.is_spot:
+        if self.trading_pair.market_info.market_type.is_spot:
             message = (
                 f"Created {self.order_type.name.upper()} {self.trade_type.name.upper()} order "
                 f"{self.client_operation_id} for {self.amount} {self.trading_pair}."

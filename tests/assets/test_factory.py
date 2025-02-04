@@ -6,7 +6,7 @@ from financepype.assets.asset_id import AssetIdentifier
 from financepype.assets.contract import DerivativeContract, DerivativeSide
 from financepype.assets.factory import AssetFactory
 from financepype.assets.spot import SpotAsset
-from financepype.markets.market import InstrumentType
+from financepype.markets.market import MarketType
 from financepype.platforms.platform import Platform
 
 
@@ -81,7 +81,7 @@ def test_custom_asset_creation(platform: Platform) -> None:
         return custom_asset
 
     # Register the custom creator
-    AssetFactory.register_creator(InstrumentType.SPOT, custom_creator)
+    AssetFactory.register_creator(MarketType.SPOT, custom_creator)
 
     # Create an asset using the custom creator
     asset = AssetFactory.get_asset(platform, "CUSTOM-USD-SPOT")

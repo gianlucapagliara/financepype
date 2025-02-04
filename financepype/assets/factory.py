@@ -5,7 +5,7 @@ from financepype.assets.asset import Asset
 from financepype.assets.asset_id import AssetIdentifier
 from financepype.assets.contract import DerivativeContract, DerivativeSide
 from financepype.assets.spot import SpotAsset
-from financepype.markets.market import InstrumentType, MarketInfo
+from financepype.markets.market import MarketInfo, MarketType
 from financepype.platforms.platform import Platform
 
 
@@ -21,7 +21,7 @@ class AssetFactory:
     """
 
     _cache: dict[tuple[str, str, Any], Asset] = {}
-    _creators: dict[InstrumentType, Callable[[Platform, str, Any], Asset]] = {}
+    _creators: dict[MarketType, Callable[[Platform, str, Any], Asset]] = {}
 
     @classmethod
     def reset(cls) -> None:
@@ -69,11 +69,11 @@ class AssetFactory:
     @classmethod
     def register_creator(
         cls,
-        instrument_type: InstrumentType,
+        market_type: MarketType,
         creator: Callable[[Platform, str, Any], Asset],
     ) -> None:
         """Register a creator function for an instrument type."""
-        cls._creators[instrument_type] = creator
+        cls._creators[market_type] = creator
 
     @classmethod
     def get_asset(cls, platform: Platform, symbol: str, **kwargs: Any) -> Asset:
@@ -90,8 +90,8 @@ class AssetFactory:
         except Exception:
             pass
 
-        if market_info is not None and market_info.instrument_type in cls._creators:
-            creator = cls._creators[market_info.instrument_type]
+        if market_info is not None and market_info.market_type in cls._creators:
+            creator = cls._creators[market_info.market_type]
             asset = creator(platform, symbol, kwargs)
         else:
             asset = SpotAsset(
@@ -104,11 +104,11 @@ class AssetFactory:
     @classmethod
     def register_default_creators(cls) -> None:
         """Register the default creator functions for standard instrument types."""
-        for instrument_type in InstrumentType:
-            if instrument_type.is_spot:
-                cls.register_creator(instrument_type, cls.create_spot)
-            elif instrument_type.is_derivative:
-                cls.register_creator(instrument_type, cls.create_derivative)
+        for market_type in MarketType:
+            if market_type.is_spot:
+                cls.register_creator(market_type, cls.create_spot)
+            elif market_type.is_derivative:
+                cls.register_creator(market_type, cls.create_derivative)
 
     @classmethod
     def create_derivative(

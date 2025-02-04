@@ -5,11 +5,12 @@ from enum import Enum
 from typing import Any, Self, cast
 
 from pydantic import BaseModel, Field, model_validator
+from typing_extensions import deprecated
 
 FORMAT = "{str_base}-{str_quote}{str_type}{str_timeframe}{str_expiry}{str_price}{str_price_short}"
 
 
-class InstrumentTimeframeType(Enum):
+class MarketTimeframe(Enum):
     """Enumeration of standard timeframes for financial instruments.
 
     Defines the standard timeframes used for trading instruments:
@@ -46,29 +47,29 @@ class InstrumentTimeframeType(Enum):
 # Millisec time intervals, those with the months and quarter represent the max time possible
 INSTRUMENT_TIMEFRAME_INTERVAL = OrderedDict(
     [
-        (3600, InstrumentTimeframeType.HOURLY),
-        (7200, InstrumentTimeframeType.BI_HOURLY),
-        (14400, InstrumentTimeframeType.QUART_HOURLY),
-        (86400, InstrumentTimeframeType.DAILY),
-        (172800, InstrumentTimeframeType.BI_DAILY),
-        (604800, InstrumentTimeframeType.WEEKLY),
-        (1209600, InstrumentTimeframeType.BI_WEEKLY),
-        (2678400, InstrumentTimeframeType.MONTHLY),  # Considering 31 days
+        (3600, MarketTimeframe.HOURLY),
+        (7200, MarketTimeframe.BI_HOURLY),
+        (14400, MarketTimeframe.QUART_HOURLY),
+        (86400, MarketTimeframe.DAILY),
+        (172800, MarketTimeframe.BI_DAILY),
+        (604800, MarketTimeframe.WEEKLY),
+        (1209600, MarketTimeframe.BI_WEEKLY),
+        (2678400, MarketTimeframe.MONTHLY),  # Considering 31 days
         (
             5356800,
-            InstrumentTimeframeType.BI_MONTHLY,
+            MarketTimeframe.BI_MONTHLY,
         ),  # Considering 31 + 31 days (like July + August)
         (
             7948800,
-            InstrumentTimeframeType.QUARTERLY,
+            MarketTimeframe.QUARTERLY,
         ),  # Considering 31 + 31 + 30 days (Q3)
-        (15897600, InstrumentTimeframeType.BI_QUARTERLY),  # Considering Q3 + Q4
-        (31622400, InstrumentTimeframeType.YEARLY),  # Considering leap year
+        (15897600, MarketTimeframe.BI_QUARTERLY),  # Considering Q3 + Q4
+        (31622400, MarketTimeframe.YEARLY),  # Considering leap year
     ]
 )
 
 
-class InstrumentType(Enum):
+class MarketType(Enum):
     """Enumeration of financial instrument types.
 
     Defines the various types of financial instruments supported:
@@ -108,7 +109,7 @@ class InstrumentType(Enum):
         Returns:
             bool: True if spot trading instrument, False otherwise
         """
-        return self in [InstrumentType.SPOT]
+        return self in [MarketType.SPOT]
 
     @property
     def is_derivative(self) -> bool:
@@ -127,9 +128,9 @@ class InstrumentType(Enum):
             bool: True if perpetual contract, False otherwise
         """
         return self in [
-            InstrumentType.PERPETUAL,
-            InstrumentType.INVERSE_PERPETUAL,
-            InstrumentType.EQUITY,
+            MarketType.PERPETUAL,
+            MarketType.INVERSE_PERPETUAL,
+            MarketType.EQUITY,
         ]
 
     @property
@@ -140,8 +141,8 @@ class InstrumentType(Enum):
             bool: True if futures contract, False otherwise
         """
         return self in [
-            InstrumentType.FUTURE,
-            InstrumentType.INVERSE_FUTURE,
+            MarketType.FUTURE,
+            MarketType.INVERSE_FUTURE,
         ]
 
     @property
@@ -152,13 +153,13 @@ class InstrumentType(Enum):
             bool: True if option contract, False otherwise
         """
         return self in [
-            InstrumentType.CALL_OPTION,
-            InstrumentType.PUT_OPTION,
-            InstrumentType.INVERSE_CALL_OPTION,
-            InstrumentType.INVERSE_PUT_OPTION,
-            InstrumentType.CALL_SPREAD,
-            InstrumentType.PUT_SPREAD,
-            InstrumentType.VOLATILITY,
+            MarketType.CALL_OPTION,
+            MarketType.PUT_OPTION,
+            MarketType.INVERSE_CALL_OPTION,
+            MarketType.INVERSE_PUT_OPTION,
+            MarketType.CALL_SPREAD,
+            MarketType.PUT_SPREAD,
+            MarketType.VOLATILITY,
         ]
 
     @property
@@ -169,10 +170,10 @@ class InstrumentType(Enum):
             bool: True if inverse contract, False otherwise
         """
         return self in [
-            InstrumentType.INVERSE_FUTURE,
-            InstrumentType.INVERSE_PERPETUAL,
-            InstrumentType.INVERSE_CALL_OPTION,
-            InstrumentType.INVERSE_PUT_OPTION,
+            MarketType.INVERSE_FUTURE,
+            MarketType.INVERSE_PERPETUAL,
+            MarketType.INVERSE_CALL_OPTION,
+            MarketType.INVERSE_PUT_OPTION,
         ]
 
     @property
@@ -183,9 +184,9 @@ class InstrumentType(Enum):
             bool: True if linear contract, False otherwise
         """
         return self in [
-            InstrumentType.SPOT,
-            InstrumentType.FUTURE,
-            InstrumentType.PERPETUAL,
+            MarketType.SPOT,
+            MarketType.FUTURE,
+            MarketType.PERPETUAL,
         ]
 
 
@@ -199,7 +200,7 @@ class MarketInfo(BaseModel):
     Attributes:
         base (str): Base currency or asset
         quote (str): Quote currency or asset
-        instrument_type (InstrumentType): Type of the instrument
+        market_type (InstrumentType): Type of the instrument
         timeframe_type (InstrumentTimeframeType | None): Timeframe for futures/options
         expiry_date (datetime | None): Expiration date for futures/options
         strike_price (Decimal | None): Strike price for options
@@ -208,11 +209,16 @@ class MarketInfo(BaseModel):
 
     base: str
     quote: str
-    instrument_type: InstrumentType
-    timeframe_type: InstrumentTimeframeType | None = None
+    market_type: MarketType
+    timeframe_type: MarketTimeframe | None = None
     expiry_date: datetime | None = None
     strike_price: Decimal | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    @deprecated("Use market_type instead")
+    def instrument_type(self) -> MarketType:
+        return self.market_type
 
     @model_validator(mode="after")
     def validate_fields(self) -> Self:
@@ -224,56 +230,56 @@ class MarketInfo(BaseModel):
         Raises:
             ValueError: If required fields are missing for the instrument type
         """
-        if self.instrument_type.is_option:
+        if self.market_type.is_option:
             if self.strike_price is None:
                 raise ValueError("Strike price is required for options")
             if self.expiry_date is None:
                 raise ValueError("Expiry date is required for options")
-        elif self.instrument_type.is_future and self.expiry_date is None:
+        elif self.market_type.is_future and self.expiry_date is None:
             raise ValueError("Expiry date is required for futures")
         return self
 
     @property
     def is_spot(self) -> bool:
-        return self.instrument_type.is_spot
+        return self.market_type.is_spot
 
     @property
     def is_derivative(self) -> bool:
-        return self.instrument_type.is_derivative
+        return self.market_type.is_derivative
 
     @property
     def is_perpetual(self) -> bool:
-        return self.instrument_type.is_perpetual
+        return self.market_type.is_perpetual
 
     @property
     def is_future(self) -> bool:
-        return self.instrument_type.is_future
+        return self.market_type.is_future
 
     @property
     def is_option(self) -> bool:
-        return self.instrument_type.is_option
+        return self.market_type.is_option
 
     @property
     def is_linear(self) -> bool:
-        return self.instrument_type.is_linear
+        return self.market_type.is_linear
 
     @property
     def is_inverse(self) -> bool:
-        return self.instrument_type.is_inverse
+        return self.market_type.is_inverse
 
     @property
     def client_name(self) -> str:
         if self.is_spot:
             return f"{self.base}-{self.quote}"
         elif self.is_perpetual:
-            return f"{self.base}-{self.quote}-{self.instrument_type.value}"
+            return f"{self.base}-{self.quote}-{self.market_type.value}"
         elif self.is_option:
-            timeframe_type = cast(InstrumentTimeframeType, self.timeframe_type)
+            timeframe_type = cast(MarketTimeframe, self.timeframe_type)
             expiry_date = cast(datetime, self.expiry_date)
-            return f"{self.base}-{self.quote}-{self.instrument_type.value}-{timeframe_type.value}-{expiry_date.strftime('%Y%m%d')}-{self.strike_price}"
+            return f"{self.base}-{self.quote}-{self.market_type.value}-{timeframe_type.value}-{expiry_date.strftime('%Y%m%d')}-{self.strike_price}"
         elif self.is_future:
-            timeframe_type = cast(InstrumentTimeframeType, self.timeframe_type)
-            return f"{self.base}-{self.quote}-{self.instrument_type.value}-{timeframe_type.value}"
+            timeframe_type = cast(MarketTimeframe, self.timeframe_type)
+            return f"{self.base}-{self.quote}-{self.market_type.value}-{timeframe_type.value}"
         else:
             raise ValueError("Invalid instrument type")
 
@@ -284,7 +290,7 @@ class MarketInfo(BaseModel):
         delivery_timestamp: int,
         instrument_timeframe_tolerance: int = 0,
         next_timeframe: bool = False,
-    ) -> InstrumentTimeframeType:
+    ) -> MarketTimeframe:
         """Determine the timeframe type based on instrument duration.
 
         Args:
@@ -298,7 +304,7 @@ class MarketInfo(BaseModel):
         """
         instrument_duration = delivery_timestamp - launch_timestamp
         if delivery_timestamp < 0:
-            return InstrumentTimeframeType.UNDEFINED
+            return MarketTimeframe.UNDEFINED
 
         if not next_timeframe:
             for duration, timeframe_type in INSTRUMENT_TIMEFRAME_INTERVAL.items():
@@ -311,7 +317,7 @@ class MarketInfo(BaseModel):
                 if instrument_duration >= duration + instrument_timeframe_tolerance:
                     return timeframe_type
 
-        return InstrumentTimeframeType.UNDEFINED
+        return MarketTimeframe.UNDEFINED
 
     @classmethod
     def split_client_instrument_name(cls, name: str) -> "MarketInfo":
@@ -334,39 +340,37 @@ class MarketInfo(BaseModel):
 
         base = split[0] if len(split) > 0 else ""
         quote = split[1] if len(split) > 1 else ""
-        instrument_type = (
-            InstrumentType(split[2]) if len(split) > 2 else InstrumentType.SPOT
-        )
+        market_type = MarketType(split[2]) if len(split) > 2 else MarketType.SPOT
         timeframe_type = None
         expiry_date = None
         strike_price = None
 
-        if instrument_type not in [
-            InstrumentType.SPOT,
-            InstrumentType.PERPETUAL,
-            InstrumentType.INVERSE_PERPETUAL,
+        if market_type not in [
+            MarketType.SPOT,
+            MarketType.PERPETUAL,
+            MarketType.INVERSE_PERPETUAL,
         ]:
             timeframe_type = (
-                InstrumentTimeframeType(split[3])
+                MarketTimeframe(split[3])
                 if len(split) > 3
-                else InstrumentTimeframeType.UNDEFINED
+                else MarketTimeframe.UNDEFINED
             )
             expiry_date = (
                 datetime.strptime(split[4], "%Y%m%d") if len(split) > 4 else None
             )
-            if instrument_type in [
-                InstrumentType.CALL_OPTION,
-                InstrumentType.PUT_OPTION,
-                InstrumentType.INVERSE_CALL_OPTION,
-                InstrumentType.INVERSE_PUT_OPTION,
-                InstrumentType.VOLATILITY,
+            if market_type in [
+                MarketType.CALL_OPTION,
+                MarketType.PUT_OPTION,
+                MarketType.INVERSE_CALL_OPTION,
+                MarketType.INVERSE_PUT_OPTION,
+                MarketType.VOLATILITY,
             ]:
                 strike_price = Decimal(split[5]) if len(split) > 5 else None
 
         return cls(
             base=base,
             quote=quote,
-            instrument_type=instrument_type,
+            market_type=market_type,
             timeframe_type=timeframe_type,
             expiry_date=expiry_date,
             strike_price=strike_price,

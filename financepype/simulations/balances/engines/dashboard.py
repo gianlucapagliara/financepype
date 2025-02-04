@@ -7,11 +7,7 @@ import streamlit as st
 
 from financepype.assets.contract import DerivativeContract, DerivativeSide
 from financepype.assets.factory import AssetFactory
-from financepype.markets.market import (
-    InstrumentTimeframeType,
-    InstrumentType,
-    MarketInfo,
-)
+from financepype.markets.market import MarketInfo, MarketTimeframe, MarketType
 from financepype.markets.position import Position
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
@@ -51,29 +47,29 @@ def main() -> None:
     st.sidebar.header("Market")
     base = st.sidebar.text_input("Base", value="EXAMPLE")
     quote = st.sidebar.text_input("Quote", value="USDT")
-    instrument_type = st.sidebar.selectbox(
+    market_type = st.sidebar.selectbox(
         "Instrument Type",
         options=[
-            InstrumentType.SPOT,
-            InstrumentType.PERPETUAL,
-            InstrumentType.INVERSE_PERPETUAL,
-            InstrumentType.CALL_OPTION,
-            InstrumentType.PUT_OPTION,
-            InstrumentType.INVERSE_CALL_OPTION,
-            InstrumentType.INVERSE_PUT_OPTION,
+            MarketType.SPOT,
+            MarketType.PERPETUAL,
+            MarketType.INVERSE_PERPETUAL,
+            MarketType.CALL_OPTION,
+            MarketType.PUT_OPTION,
+            MarketType.INVERSE_CALL_OPTION,
+            MarketType.INVERSE_PUT_OPTION,
         ],
     )
     timeframe_type = None
     expiry_date = None
     strike_price = None
-    if instrument_type.is_option:
-        timeframe_type = InstrumentTimeframeType.WEEKLY
+    if market_type.is_option:
+        timeframe_type = MarketTimeframe.WEEKLY
         expiry_date = datetime.now() + timedelta(days=30)
         strike_price = st.sidebar.number_input("Strike Price", value=100.0, step=5.0)
     market_info = MarketInfo(
         base=base,
         quote=quote,
-        instrument_type=instrument_type,
+        market_type=market_type,
         timeframe_type=timeframe_type,
         expiry_date=expiry_date,
         strike_price=Decimal(str(strike_price)) if strike_price else None,

@@ -6,7 +6,7 @@ import pytest
 
 from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
-from financepype.markets.market import InstrumentType
+from financepype.markets.market import MarketType
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.fees import FeeImpactType, FeeType, OperationFee
 from financepype.operations.orders.models import OrderType, PositionAction, TradeType
@@ -37,7 +37,7 @@ class MockEngine(Protocol):
 @pytest.fixture
 def mock_trading_pair() -> TradingPair:
     trading_pair = Mock(spec=TradingPair)
-    trading_pair.instrument_type = InstrumentType.SPOT
+    trading_pair.market_type = MarketType.SPOT
     trading_pair.base = "BTC"
     trading_pair.quote = "USDT"
     return trading_pair
@@ -129,7 +129,7 @@ def test_get_engine_spot(mock_trading_pair: TradingPair) -> None:
 def test_get_engine_unsupported() -> None:
     """Test that getting an engine for an unsupported instrument type raises ValueError."""
     trading_pair = Mock(spec=TradingPair)
-    trading_pair.instrument_type = "UNSUPPORTED"
+    trading_pair.market_type = "UNSUPPORTED"
     with pytest.raises(ValueError, match="Unsupported instrument type: UNSUPPORTED"):
         BalanceMultiEngine.get_engine(trading_pair)
 

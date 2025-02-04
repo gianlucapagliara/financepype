@@ -4,7 +4,7 @@ from decimal import Decimal
 from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
 from financepype.constants import s_decimal_0, s_decimal_NaN
-from financepype.markets.market import InstrumentType
+from financepype.markets.market import MarketType
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import PositionAction, TradeType
 from financepype.simulations.balances.engines.engine import BalanceEngine
@@ -185,6 +185,16 @@ class BaseOptionBalanceEngine(BalanceEngine):
 
         # Handle unsupported fee types
         raise ValueError(f"Unsupported fee type: {order_details.fee.fee_type}")
+
+    @classmethod
+    def _calculate_otm_amount(cls, order_details: OrderDetails) -> Decimal:
+        strike = _safe_decimal(order_details.trading_pair.market_info.strike_price)
+        index_price = _safe_decimal(order_details.index_price)
+        return (
+            max(s_decimal_0, strike - index_price)
+            if order_details.trading_pair.market_type == MarketType.CALL_OPTION
+            else max(s_decimal_0, index_price - strike)
+        )
 
     @classmethod
     def get_involved_assets(
@@ -695,8 +705,7 @@ class OptionBalanceEngine(BaseOptionBalanceEngine):
         """
         # Get option type
         is_call = (
-            order_details.trading_pair.market_info.instrument_type
-            == InstrumentType.CALL_OPTION
+            order_details.trading_pair.market_info.market_type == MarketType.CALL_OPTION
         )
 
         # Get strike price
@@ -809,8 +818,8 @@ class InverseOptionBalanceEngine(BaseOptionBalanceEngine):
         """
         # Get option type
         is_call = (
-            order_details.trading_pair.market_info.instrument_type
-            == InstrumentType.INVERSE_CALL_OPTION
+            order_details.trading_pair.market_info.market_type
+            == MarketType.INVERSE_CALL_OPTION
         )
 
         # Get strike price

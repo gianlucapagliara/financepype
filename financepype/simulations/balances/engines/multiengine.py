@@ -15,7 +15,7 @@ Example:
     >>> from financepype.simulations.balances.engines import BalanceMultiEngine
     >>>
     >>> # Create an order for a spot market
-    >>> pair = TradingPair("BTC-USD", instrument_type=InstrumentType.SPOT)
+    >>> pair = TradingPair("BTC-USD", market_type=InstrumentType.SPOT)
     >>> order = OrderDetails(trading_pair=pair, ...)
     >>>
     >>> # Simulate the order
@@ -27,7 +27,7 @@ Example:
     >>> print(result.opening_outflows)  # Shows the cost of the trade
 """
 
-from financepype.markets.market import InstrumentType
+from financepype.markets.market import MarketType
 from financepype.markets.trading_pair import TradingPair
 from financepype.simulations.balances.engines.engine import BalanceEngine
 from financepype.simulations.balances.engines.models import AssetCashflow, OrderDetails
@@ -77,14 +77,14 @@ class BalanceMultiEngine(BalanceEngine):
         ... )
     """
 
-    INSTRUMENT_TYPE_TO_ENGINE_MAP = {
-        InstrumentType.SPOT: SpotBalanceEngine,
-        InstrumentType.PERPETUAL: PerpetualBalanceEngine,
-        InstrumentType.INVERSE_PERPETUAL: InversePerpetualBalanceEngine,
-        InstrumentType.CALL_OPTION: OptionBalanceEngine,
-        InstrumentType.PUT_OPTION: OptionBalanceEngine,
-        InstrumentType.INVERSE_CALL_OPTION: InverseOptionBalanceEngine,
-        InstrumentType.INVERSE_PUT_OPTION: InverseOptionBalanceEngine,
+    market_type_TO_ENGINE_MAP = {
+        MarketType.SPOT: SpotBalanceEngine,
+        MarketType.PERPETUAL: PerpetualBalanceEngine,
+        MarketType.INVERSE_PERPETUAL: InversePerpetualBalanceEngine,
+        MarketType.CALL_OPTION: OptionBalanceEngine,
+        MarketType.PUT_OPTION: OptionBalanceEngine,
+        MarketType.INVERSE_CALL_OPTION: InverseOptionBalanceEngine,
+        MarketType.INVERSE_PUT_OPTION: InverseOptionBalanceEngine,
     }
 
     @classmethod
@@ -108,11 +108,9 @@ class BalanceMultiEngine(BalanceEngine):
             >>> engine_class = BalanceMultiEngine.get_engine(pair)
             >>> print(engine_class)  # <class 'SpotBalanceEngine'>
         """
-        if trading_pair.instrument_type not in cls.INSTRUMENT_TYPE_TO_ENGINE_MAP:
-            raise ValueError(
-                f"Unsupported instrument type: {trading_pair.instrument_type}"
-            )
-        return cls.INSTRUMENT_TYPE_TO_ENGINE_MAP[trading_pair.instrument_type]
+        if trading_pair.market_type not in cls.market_type_TO_ENGINE_MAP:
+            raise ValueError(f"Unsupported instrument type: {trading_pair.market_type}")
+        return cls.market_type_TO_ENGINE_MAP[trading_pair.market_type]
 
     @classmethod
     def get_involved_assets(cls, order_details: OrderDetails) -> list[AssetCashflow]:

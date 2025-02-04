@@ -1,8 +1,9 @@
 from typing import Any, ClassVar
 
 from pydantic import BaseModel, field_validator
+from typing_extensions import deprecated
 
-from financepype.markets.market import InstrumentType, MarketInfo
+from financepype.markets.market import MarketInfo, MarketType
 
 
 class TradingPair(BaseModel):
@@ -86,6 +87,16 @@ class TradingPair(BaseModel):
         return MarketInfo.split_client_instrument_name(self.name)
 
     @property
+    @deprecated("Use market_info instead")
+    def instrument_info(self) -> MarketInfo:
+        """Get the instrument information for this trading pair.
+
+        Returns:
+            InstrumentInfo: Object containing parsed instrument details
+        """
+        return self.market_info
+
+    @property
     def base(self) -> str:
         """Get the base currency of the trading pair.
 
@@ -104,13 +115,23 @@ class TradingPair(BaseModel):
         return self.market_info.quote
 
     @property
-    def instrument_type(self) -> InstrumentType:
+    def market_type(self) -> MarketType:
         """Get the type of instrument this trading pair represents.
 
         Returns:
             InstrumentType: The type of the trading instrument
         """
-        return self.market_info.instrument_type
+        return self.market_info.market_type
+
+    @property
+    @deprecated("Use market_type instead")
+    def instrument_type(self) -> MarketType:
+        """Get the type of instrument this trading pair represents.
+
+        Returns:
+            InstrumentType: The type of the trading instrument
+        """
+        return self.market_type
 
     def __str__(self) -> str:
         return self.name
