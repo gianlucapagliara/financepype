@@ -174,7 +174,7 @@ def test_get_involved_assets_buy(
 ) -> None:
     """Test getting involved assets for buy order."""
     assets = SpotBalanceEngine.get_involved_assets(buy_order_details)
-    assert len(assets) == 3  # Cost outflow, Return inflow, Fee outflow
+    assert len(assets) == 4  # Cost outflow, Return inflow, Fee outflow
     assert assets[0].asset == quote_asset
     assert assets[0].involvement_type == InvolvementType.OPENING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
@@ -187,6 +187,10 @@ def test_get_involved_assets_buy(
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.OUTFLOW
     assert assets[2].reason == CashflowReason.FEE
+    assert assets[3].asset == base_asset
+    assert assets[3].involvement_type == InvolvementType.CLOSING
+    assert assets[3].cashflow_type == CashflowType.OUTFLOW
+    assert assets[3].reason == CashflowReason.FEE
 
 
 def test_get_involved_assets_sell(
@@ -194,7 +198,7 @@ def test_get_involved_assets_sell(
 ) -> None:
     """Test getting involved assets for sell order."""
     assets = SpotBalanceEngine.get_involved_assets(sell_order_details)
-    assert len(assets) == 3  # Cost outflow, Return inflow, Fee outflow
+    assert len(assets) == 4  # Cost outflow, Return inflow, Fee outflow
     assert assets[0].asset == base_asset
     assert assets[0].involvement_type == InvolvementType.OPENING
     assert assets[0].cashflow_type == CashflowType.OUTFLOW
@@ -207,6 +211,10 @@ def test_get_involved_assets_sell(
     assert assets[2].involvement_type == InvolvementType.OPENING
     assert assets[2].cashflow_type == CashflowType.OUTFLOW
     assert assets[2].reason == CashflowReason.FEE
+    assert assets[3].asset == quote_asset
+    assert assets[3].involvement_type == InvolvementType.CLOSING
+    assert assets[3].cashflow_type == CashflowType.OUTFLOW
+    assert assets[3].reason == CashflowReason.FEE
 
 
 def test_get_opening_outflows_buy(

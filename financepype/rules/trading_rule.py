@@ -371,11 +371,11 @@ class DerivativeTradingRule(TradingRule):
         default=None,
         description="Strike price for options",
     )
-    start_timestamp: int | float = Field(
+    start_timestamp: float = Field(
         default=0,
         description="When trading begins",
     )
-    expiry_timestamp: int | float = Field(
+    expiry_timestamp: float = Field(
         default=-1,
         description="When trading ends (-1 for perpetual)",
     )

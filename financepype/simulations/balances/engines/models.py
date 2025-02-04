@@ -250,7 +250,7 @@ class OrderDetails(MinimalOrderDetails):
         default_factory=set,
         description="Additional order specifications",
     )
-    amount: Decimal = Field(ge=0, description="Order size")
+    amount: Decimal = Field(description="Order size", allow_inf_nan=True)
     price: Decimal = Field(description="Order price")
     index_price: Decimal | None = Field(
         default=None,
@@ -265,7 +265,20 @@ class OrderDetails(MinimalOrderDetails):
         default=None,
         description="Current position",
     )
+    other_positions: list[Position] = Field(
+        default_factory=list,
+        description="Other positions useful for cross margin calculations",
+    )
     fee: OperationFee = Field(description="Fee structure for the order")
+
+    @field_validator("amount", mode="before")
+    def validate_amount(cls, value: Decimal) -> Decimal:
+        """Validate the amount of the asset."""
+        if value.is_nan():
+            return s_decimal_NaN
+        if value < s_decimal_0:
+            raise ValueError("Amount must be positive or Inf/NaN")
+        return value
 
     def model_post_init(self, __context: Any) -> None:
         """Validate order details after initialization."""

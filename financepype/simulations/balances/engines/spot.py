@@ -10,6 +10,7 @@ from financepype.simulations.balances.engines.models import (
     CashflowReason,
     CashflowType,
     InvolvementType,
+    MinimalOrderDetails,
     OrderDetails,
 )
 
@@ -46,7 +47,7 @@ class SpotBalanceEngine(BalanceEngine):
     """
 
     @classmethod
-    def _get_outflow_asset(cls, order_details: OrderDetails) -> Asset:
+    def _get_outflow_asset(cls, order_details: MinimalOrderDetails) -> Asset:
         """Get the asset that will flow out during the trade.
 
         For BUY orders: quote currency (e.g., USDT in BTC/USDT)
@@ -62,7 +63,7 @@ class SpotBalanceEngine(BalanceEngine):
         return asset
 
     @classmethod
-    def _get_inflow_asset(cls, order_details: OrderDetails) -> Asset:
+    def _get_inflow_asset(cls, order_details: MinimalOrderDetails) -> Asset:
         """Get the asset that will flow in during the trade.
 
         For BUY orders: base currency (e.g., BTC in BTC/USDT)
@@ -173,8 +174,7 @@ class SpotBalanceEngine(BalanceEngine):
 
     @classmethod
     def get_involved_assets(
-        cls,
-        order_details: OrderDetails,
+        cls, order_details: MinimalOrderDetails
     ) -> list[AssetCashflow]:
         """Get all assets involved in a spot trading operation.
 
@@ -213,16 +213,22 @@ class SpotBalanceEngine(BalanceEngine):
         )
 
         # Fee
-        if order_details.fee.impact_type == FeeImpactType.ADDED_TO_COSTS:
-            fee_asset = cls._get_expected_fee_asset(order_details)
-            result.append(
-                AssetCashflow(
-                    asset=fee_asset,
-                    involvement_type=InvolvementType.OPENING,
-                    cashflow_type=CashflowType.OUTFLOW,
-                    reason=CashflowReason.FEE,
-                )
+        result.append(
+            AssetCashflow(
+                asset=outflow_asset,
+                involvement_type=InvolvementType.OPENING,
+                cashflow_type=CashflowType.OUTFLOW,
+                reason=CashflowReason.FEE,
             )
+        )
+        result.append(
+            AssetCashflow(
+                asset=inflow_asset,
+                involvement_type=InvolvementType.CLOSING,
+                cashflow_type=CashflowType.OUTFLOW,
+                reason=CashflowReason.FEE,
+            )
+        )
 
         return result
 
