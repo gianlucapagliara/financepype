@@ -6,6 +6,13 @@ from financepype.platforms.centralized import CentralizedPlatform
 from financepype.platforms.platform import Platform
 
 
+class MockBlockchainType(BlockchainType):
+    """Mock blockchain type."""
+
+    EVM = "EVM"
+    SOLANA = "Solana"
+
+
 def test_platform_singleton() -> None:
     """Test that Platform class implements singleton pattern correctly."""
     # Same identifier should return same instance
@@ -68,21 +75,25 @@ def test_centralized_platform_singleton() -> None:
 
 def test_blockchain_type_values() -> None:
     """Test BlockchainType enum values."""
-    assert BlockchainType.EVM.value == "EVM"
-    assert BlockchainType.SOLANA.value == "Solana"
+    assert MockBlockchainType.EVM.value == "EVM"
+    assert MockBlockchainType.SOLANA.value == "Solana"
 
 
 def test_blockchain_platform_basic() -> None:
     """Test basic BlockchainPlatform functionality."""
     # Test EVM platform
-    eth_platform = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    eth_platform = BlockchainPlatform(
+        identifier="ethereum", type=MockBlockchainType.EVM
+    )
     assert eth_platform.identifier == "ethereum"
-    assert eth_platform.type == BlockchainType.EVM
+    assert eth_platform.type == MockBlockchainType.EVM
 
     # Test Solana platform
-    sol_platform = BlockchainPlatform(identifier="solana", type=BlockchainType.SOLANA)
+    sol_platform = BlockchainPlatform(
+        identifier="solana", type=MockBlockchainType.SOLANA
+    )
     assert sol_platform.identifier == "solana"
-    assert sol_platform.type == BlockchainType.SOLANA
+    assert sol_platform.type == MockBlockchainType.SOLANA
 
 
 def test_blockchain_platform_validation() -> None:
@@ -102,17 +113,19 @@ def test_blockchain_platform_validation() -> None:
 def test_blockchain_platform_singleton() -> None:
     """Test that BlockchainPlatform maintains singleton behavior."""
     # Same identifier and type should return same instance
-    platform1 = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
-    platform2 = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    platform1 = BlockchainPlatform(identifier="ethereum", type=MockBlockchainType.EVM)
+    platform2 = BlockchainPlatform(identifier="ethereum", type=MockBlockchainType.EVM)
     assert platform1 is platform2
 
     # Different identifiers should return different instances
-    platform3 = BlockchainPlatform(identifier="bsc", type=BlockchainType.EVM)
+    platform3 = BlockchainPlatform(identifier="bsc", type=MockBlockchainType.EVM)
     assert platform1 is not platform3
 
     # Same identifier but different types should return different instances
     # (This shouldn't happen in practice, but testing the behavior)
-    platform4 = BlockchainPlatform(identifier="ethereum", type=BlockchainType.SOLANA)
+    platform4 = BlockchainPlatform(
+        identifier="ethereum", type=MockBlockchainType.SOLANA
+    )
     assert platform1 is not platform4
 
 
@@ -121,7 +134,7 @@ def test_platform_clear_cache() -> None:
     # Create some platforms
     platform1 = Platform(identifier="test1")
     platform2 = CentralizedPlatform(identifier="test2", sub_identifier="sub")
-    platform3 = BlockchainPlatform(identifier="test3", type=BlockchainType.EVM)
+    platform3 = BlockchainPlatform(identifier="test3", type=MockBlockchainType.EVM)
 
     # Clear cache
     Platform.clear_cache()
@@ -129,7 +142,7 @@ def test_platform_clear_cache() -> None:
     # Creating new instances should return different objects
     new_platform1 = Platform(identifier="test1")
     new_platform2 = CentralizedPlatform(identifier="test2", sub_identifier="sub")
-    new_platform3 = BlockchainPlatform(identifier="test3", type=BlockchainType.EVM)
+    new_platform3 = BlockchainPlatform(identifier="test3", type=MockBlockchainType.EVM)
 
     assert platform1 is not new_platform1
     assert platform2 is not new_platform2
@@ -144,6 +157,6 @@ def test_platform_inheritance() -> None:
     assert isinstance(centralized, CentralizedPlatform)
 
     # BlockchainPlatform should be instance of Platform
-    blockchain = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    blockchain = BlockchainPlatform(identifier="ethereum", type=MockBlockchainType.EVM)
     assert isinstance(blockchain, Platform)
     assert isinstance(blockchain, BlockchainPlatform)

@@ -16,6 +16,13 @@ from financepype.operators.blockchains.identifier import BlockchainIdentifier
 from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 
 
+class MockBlockchainType(BlockchainType):
+    """Mock blockchain type."""
+
+    EVM = "EVM"
+    SOLANA = "Solana"
+
+
 class MockBlockchainIdentifier(BlockchainIdentifier):
     """Test implementation of BlockchainIdentifier."""
 
@@ -53,7 +60,7 @@ def test_blockchain_transaction_fee_defaults() -> None:
 
 def test_blockchain_transaction_fee_with_asset() -> None:
     """Test BlockchainTransactionFee with a specific asset."""
-    platform = BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    platform = BlockchainPlatform(identifier="ethereum", type=MockBlockchainType.EVM)
     identifier = MockBlockchainIdentifier(raw="0x123", string="0x123")
     data = BlockchainAssetData(name="Test Token", symbol="TEST", decimals=18)
     asset = BlockchainAsset(platform=platform, identifier=identifier, data=data)

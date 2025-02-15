@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import time
 from datetime import timedelta
 from typing import Any, ClassVar, cast
@@ -26,6 +25,13 @@ from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 from financepype.platforms.platform import Platform
 
 
+class MockBlockchainType(BlockchainType):
+    """Mock blockchain type."""
+
+    EVM = "EVM"
+    SOLANA = "Solana"
+
+
 class MockBlockchainIdentifier(BlockchainIdentifier):
     """Test implementation of BlockchainIdentifier."""
 
@@ -48,10 +54,6 @@ class MockBlockchain(Blockchain):
     def __init__(self, platform: BlockchainPlatform) -> None:
         config = BlockchainConfiguration(platform=platform)
         super().__init__(configuration=config)
-
-    @classmethod
-    def logger(cls) -> logging.Logger:
-        return logging.getLogger("test_blockchain")
 
 
 class MockBlockchainTransaction(BlockchainTransaction):
@@ -82,7 +84,9 @@ class MockBlockchainTransaction(BlockchainTransaction):
     @property
     def blockchain(self) -> Blockchain:
         return MockBlockchain(
-            platform=BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+            platform=BlockchainPlatform(
+                identifier="ethereum", type=MockBlockchainType.EVM
+            )
         )
 
     @property
@@ -181,7 +185,7 @@ class MockBlockchainWallet(BlockchainWallet):
 @pytest.fixture
 def blockchain_platform() -> BlockchainPlatform:
     """Create a blockchain platform fixture."""
-    return BlockchainPlatform(identifier="ethereum", type=BlockchainType.EVM)
+    return BlockchainPlatform(identifier="ethereum", type=MockBlockchainType.EVM)
 
 
 @pytest.fixture

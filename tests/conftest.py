@@ -4,6 +4,7 @@ import pytest
 
 from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
+from financepype.operators.factory import OperatorFactory
 from financepype.platforms.platform import Platform
 
 
@@ -12,6 +13,7 @@ def clear_caches() -> Generator[None, None, None]:
     """Clear all caches before each test."""
     # Reset AssetFactory to its initial state
     AssetFactory.reset()
+    OperatorFactory.reset()
     Platform.clear_cache()
     yield
 
