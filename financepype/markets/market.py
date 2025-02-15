@@ -320,7 +320,7 @@ class MarketInfo(BaseModel):
         return MarketTimeframe.UNDEFINED
 
     @classmethod
-    def split_client_instrument_name(cls, name: str) -> "MarketInfo":
+    def split_client_instrument_name(cls, name: str) -> Self:
         """Parse a client instrument name into its components.
 
         Parses a standardized instrument name string into a MarketInfo object.

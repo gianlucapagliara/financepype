@@ -29,7 +29,7 @@ class Position(BaseModel):
     entry_price: Decimal = Field(gt=s_decimal_0)
     entry_index_price: Decimal = Field(gt=s_decimal_0)
     margin: Decimal = Field(ge=s_decimal_0)
-    unrealized_pnl: Decimal
+    unrealized_pnl: Decimal = Field(allow_inf_nan=True)
     liquidation_price: Decimal = Field(ge=s_decimal_0)
 
     @field_validator("liquidation_price", mode="before")

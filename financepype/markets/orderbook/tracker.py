@@ -23,6 +23,12 @@ from financepype.markets.trading_pair import TradingPair
 
 
 class OrderBookTracker(MultiPublisher, ABC):
+    """
+    Abstract base class for order book trackers.
+    """
+
+    _logger: logging.Logger | None = None
+
     def __init__(
         self, trading_pairs: Iterable[TradingPair], past_diffs_window_size: int = 32
     ):
@@ -59,10 +65,11 @@ class OrderBookTracker(MultiPublisher, ABC):
 
         self._order_books_initialized: asyncio.Event = asyncio.Event()
 
-    @abstractmethod
     @classmethod
     def logger(cls) -> logging.Logger:
-        raise NotImplementedError
+        if cls._logger is None:
+            cls._logger = logging.getLogger(cls.__name__)
+        return cls._logger
 
     @property
     def trading_pairs(self) -> set[TradingPair]:

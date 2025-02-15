@@ -44,7 +44,7 @@ class OperationTracker:
             logging.Logger: The logger instance
         """
         if cls._logger is None:
-            cls._logger = logging.getLogger("exchange")
+            cls._logger = logging.getLogger(cls.__name__)
         return cls._logger
 
     def __init__(

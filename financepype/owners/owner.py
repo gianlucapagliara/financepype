@@ -127,7 +127,7 @@ class Owner(MultiPublisher):
             logging.Logger: The logger for this owner
         """
         if cls._logger is None:
-            cls._logger = logging.getLogger("user")
+            cls._logger = logging.getLogger(cls.__name__)
         return cls._logger
 
     def __repr__(self) -> str:

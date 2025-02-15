@@ -53,6 +53,8 @@ class TradingRulesTracker(ABC):
         >>> is_valid = await tracker.is_trading_pair_valid("BTC-USDT")
     """
 
+    _logger: logging.Logger | None = None
+
     def __init__(self) -> None:
         """Initialize the trading rules tracker.
 
@@ -65,12 +67,13 @@ class TradingRulesTracker(ABC):
         self._mapping_initialization_lock = asyncio.Lock()
 
     @classmethod
-    @abstractmethod
     def logger(cls) -> logging.Logger:
         """
         Returns the logger for the trading rules tracker.
         """
-        raise NotImplementedError
+        if cls._logger is None:
+            cls._logger = logging.getLogger(cls.__name__)
+        return cls._logger
 
     @property
     def trading_rules(self) -> dict[TradingPair, TradingRule]:

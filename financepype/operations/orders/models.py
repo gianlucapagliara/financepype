@@ -1,6 +1,6 @@
 from decimal import Decimal
 from enum import Enum
-from typing import Any, Self
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -14,20 +14,8 @@ class OrderType(Enum):
     LIMIT = "LIMIT"
     LIMIT_MAKER = "LIMIT_MAKER"  # Deprecated
 
-    def __new__(cls, value: object) -> Self:
-        if value == "LIMIT_MAKER":
-            print(
-                "WARNING: LIMIT_MAKER is deprecated. Use LIMIT instead with POST_ONLY modifier."
-            )
-        obj = object.__new__(cls)
-        obj._value_ = value
-        return obj
-
     def is_limit_type(self) -> bool:
-        return self.name in [
-            "LIMIT",
-            "LIMIT_MAKER",
-        ]  # Done by name to avoid __new__ warning
+        return self in [OrderType.LIMIT, OrderType.LIMIT_MAKER]
 
     def is_market_type(self) -> bool:
         return self == OrderType.MARKET
