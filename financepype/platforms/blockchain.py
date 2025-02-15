@@ -11,18 +11,9 @@ class BlockchainType(Enum):
     This enum defines the different types of blockchain networks that
     the system can interact with. Each type represents a distinct
     blockchain ecosystem with its own protocols and characteristics.
-
-    Attributes:
-        EVM (str): Ethereum Virtual Machine based blockchains (Ethereum, BSC, etc.)
-        SOLANA (str): Solana blockchain
-
-    Example:
-        >>> chain_type = BlockchainType.EVM
-        >>> assert chain_type.value == "EVM"
     """
 
-    EVM = "EVM"
-    SOLANA = "Solana"
+    pass
 
 
 class BlockchainPlatform(Platform):

@@ -1,4 +1,3 @@
-import logging
 from abc import abstractmethod
 from typing import cast
 
@@ -10,11 +9,6 @@ from financepype.platforms.blockchain import BlockchainPlatform, BlockchainType
 
 
 class Blockchain(Operator):
-    @classmethod
-    @abstractmethod
-    def logger(cls) -> logging.Logger:
-        raise NotImplementedError
-
     # === Properties ===
 
     @property

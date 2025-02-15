@@ -33,6 +33,8 @@ class Operator:
         >>> print(operator.name)  # Output: "binance"
     """
 
+    _logger: logging.Logger | None = None
+
     def __init__(self, configuration: OperatorConfiguration):
         """Initialize a new operator.
 
@@ -49,9 +51,10 @@ class Operator:
         self._event_publishing = MultiPublisher()
 
     @classmethod
-    @abstractmethod
     def logger(cls) -> logging.Logger:
-        raise NotImplementedError
+        if cls._logger is None:
+            cls._logger = logging.getLogger(cls.__name__)
+        return cls._logger
 
     @property
     def configuration(self) -> OperatorConfiguration:
