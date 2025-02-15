@@ -77,7 +77,7 @@ class BalanceMultiEngine(BalanceEngine):
         ... )
     """
 
-    market_type_TO_ENGINE_MAP = {
+    MARKET_TYPE_TO_ENGINE_MAP = {
         MarketType.SPOT: SpotBalanceEngine,
         MarketType.PERPETUAL: PerpetualBalanceEngine,
         MarketType.INVERSE_PERPETUAL: InversePerpetualBalanceEngine,
@@ -108,9 +108,9 @@ class BalanceMultiEngine(BalanceEngine):
             >>> engine_class = BalanceMultiEngine.get_engine(pair)
             >>> print(engine_class)  # <class 'SpotBalanceEngine'>
         """
-        if trading_pair.market_type not in cls.market_type_TO_ENGINE_MAP:
+        if trading_pair.market_type not in cls.MARKET_TYPE_TO_ENGINE_MAP:
             raise ValueError(f"Unsupported instrument type: {trading_pair.market_type}")
-        return cls.market_type_TO_ENGINE_MAP[trading_pair.market_type]
+        return cls.MARKET_TYPE_TO_ENGINE_MAP[trading_pair.market_type]
 
     @classmethod
     def get_involved_assets(cls, order_details: OrderDetails) -> list[AssetCashflow]:
