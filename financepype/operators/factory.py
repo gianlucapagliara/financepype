@@ -28,9 +28,9 @@ class OperatorFactory:
         >>> assert operator1 is operator2  # Same instance
     """
 
-    _cache: dict[tuple[type[Operator], Platform], Operator] = {}
-    _operator_classes: dict[Platform, type[Operator]] = {}
+    _platform_class_mapping: dict[Platform, type[Operator]] = {}
     _configurations: dict[Platform, OperatorConfiguration] = {}
+    _cache: dict[tuple[type[Operator], Platform], Operator] = {}
 
     @classmethod
     def reset(cls) -> None:
@@ -44,7 +44,7 @@ class OperatorFactory:
         Useful for testing or when a complete reset is needed.
         """
         cls._cache.clear()
-        cls._operator_classes.clear()
+        cls._platform_class_mapping.clear()
         cls._configurations.clear()
 
     @classmethod
@@ -64,7 +64,7 @@ class OperatorFactory:
         """
         return {
             "cache_size": len(cls._cache),
-            "registered_operator_classes": len(cls._operator_classes),
+            "registered_operator_classes": len(cls._platform_class_mapping),
             "registered_configurations": len(cls._configurations),
         }
 
@@ -85,42 +85,33 @@ class OperatorFactory:
         Raises:
             ValueError: If a class is already registered for this platform
         """
-        if platform in cls._operator_classes:
+        if platform in cls._platform_class_mapping:
             raise ValueError(
                 f"Operator class already registered for platform '{platform}'"
             )
-        cls._operator_classes[platform] = operator_class
+        cls._platform_class_mapping[platform] = operator_class
 
     @classmethod
-    def register_configuration(
-        cls, platform: Platform, configuration: OperatorConfiguration
-    ) -> None:
-        """Register a configuration for a platform.
+    def register_configuration(cls, configuration: OperatorConfiguration) -> None:
+        """Register a configuration.
 
         This is the primary way to register configurations in the factory.
         Each platform can have only one configuration at a time.
 
         Args:
-            platform: The platform to register for
             configuration: The operator configuration to register
 
         Raises:
             ValueError: If a configuration already exists for this platform
-            ValueError: If the configuration platform doesn't match the given platform
             ValueError: If no operator class is registered for the platform
         """
+        platform = configuration.platform
         if platform in cls._configurations:
             raise ValueError(
                 f"Configuration already registered for platform '{platform}'"
             )
 
-        if configuration.platform != platform:
-            raise ValueError(
-                f"Configuration platform '{configuration.platform}' does not match "
-                f"registration platform '{platform}'"
-            )
-
-        if platform not in cls._operator_classes:
+        if platform not in cls._platform_class_mapping:
             raise ValueError(
                 f"No operator class registered for platform '{platform}'. "
                 "Register a class first using register_operator_class()"
@@ -148,8 +139,8 @@ class OperatorFactory:
         if not config:
             raise ValueError(f"No configuration registered for platform '{platform}'")
 
-        operator_class = cls._operator_classes[platform]
-        return cls._create_operator(operator_class, config)
+        operator_class = cls._platform_class_mapping[platform]
+        return cls.create_operator(operator_class, config)
 
     @classmethod
     def get_configuration(cls, platform: Platform) -> OperatorConfiguration | None:
@@ -173,7 +164,7 @@ class OperatorFactory:
         return cls._configurations.copy()
 
     @classmethod
-    def _create_operator(
+    def create_operator(
         cls,
         operator_class: type[T],
         configuration: OperatorConfiguration,

@@ -29,7 +29,7 @@ def test_operator_singleton(platform: Platform, config: OperatorConfiguration) -
     """Test that operators are properly cached as singletons."""
     # Register operator class and configuration
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
 
     # Same platform should return same instance
     operator1 = OperatorFactory.get(platform)
@@ -40,7 +40,7 @@ def test_operator_singleton(platform: Platform, config: OperatorConfiguration) -
     platform2 = Platform(identifier="test2")
     config2 = OperatorConfiguration(platform=platform2)
     OperatorFactory.register_operator_class(platform2, MockOperator)
-    OperatorFactory.register_configuration(platform2, config2)
+    OperatorFactory.register_configuration(config2)
     operator3 = OperatorFactory.get(platform2)
     assert operator1 is not operator3
 
@@ -67,7 +67,7 @@ def test_operator_cache_management(
     """Test cache management functions."""
     # Register operator class and configuration
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
 
     # Create operator
     operator = OperatorFactory.get(platform)
@@ -90,7 +90,7 @@ def test_configuration_registration(
     OperatorFactory.register_operator_class(platform, MockOperator)
 
     # Register configuration
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
 
     # Get configuration
     retrieved_config = OperatorFactory.get_configuration(platform)
@@ -103,20 +103,13 @@ def test_configuration_registration(
 
     # Duplicate registration should fail
     with pytest.raises(ValueError):
-        OperatorFactory.register_configuration(platform, config)
+        OperatorFactory.register_configuration(config)
 
     # Registration without operator class should fail
     unknown_platform = Platform(identifier="unknown")
     config2 = OperatorConfiguration(platform=unknown_platform)
     with pytest.raises(ValueError):
-        OperatorFactory.register_configuration(unknown_platform, config2)
-
-    # Configuration platform must match registration platform
-    mismatched_platform = Platform(identifier="mismatched")
-    mismatched_config = OperatorConfiguration(platform=platform)
-    with pytest.raises(ValueError) as exc_info:
-        OperatorFactory.register_configuration(mismatched_platform, mismatched_config)
-    assert "Configuration platform" in str(exc_info.value)
+        OperatorFactory.register_configuration(config2)
 
     # Non-existent configuration
     assert OperatorFactory.get_configuration(unknown_platform) is None
@@ -133,8 +126,8 @@ def test_operator_reset(platform: Platform, config: OperatorConfiguration) -> No
     """Test complete factory reset."""
     # Setup factory
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
-    operator = OperatorFactory.get(platform)
+    OperatorFactory.register_configuration(config)
+    _ = OperatorFactory.get(platform)
 
     assert OperatorFactory.get_cache_info()["cache_size"] > 0
     assert OperatorFactory.get_cache_info()["registered_operator_classes"] > 0
@@ -154,7 +147,7 @@ def test_operator_type_safety(
     """Test that operators are returned with correct type."""
     # Register and get operator
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
     operator = OperatorFactory.get(platform)
 
     # Verify type
@@ -176,14 +169,14 @@ def test_cache_key_uniqueness(
 
     # First operator
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
     operator1 = OperatorFactory.get(platform)
 
     # Clear and register different operator class
     OperatorFactory.reset()
 
     OperatorFactory.register_operator_class(platform, AnotherMockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
     operator2 = OperatorFactory.get(platform)
 
     # Verify different types and behavior
@@ -198,7 +191,7 @@ def test_configuration_immutability(
     """Test that returned configurations are copies."""
     # Register configuration
     OperatorFactory.register_operator_class(platform, MockOperator)
-    OperatorFactory.register_configuration(platform, config)
+    OperatorFactory.register_configuration(config)
 
     # Try to modify returned configurations
     configs = OperatorFactory.list_configurations()
