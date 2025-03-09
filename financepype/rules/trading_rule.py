@@ -158,7 +158,9 @@ class TradingRule(BaseModel):
 
     @field_validator("trading_pair", mode="before")
     @classmethod
-    def validate_trading_pair(cls, v: str | TradingPair) -> TradingPair:
+    def validate_trading_pair(
+        cls, v: str | dict[str, Any] | TradingPair
+    ) -> TradingPair:
         """Convert string trading pair to TradingPair object.
 
         This validator allows the trading_pair field to accept either a string
@@ -176,6 +178,8 @@ class TradingRule(BaseModel):
         """
         if isinstance(v, str):
             return TradingPair(name=v)
+        elif isinstance(v, dict):
+            return TradingPair.model_validate(v)
         return v
 
     @model_validator(mode="after")

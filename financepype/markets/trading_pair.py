@@ -42,7 +42,10 @@ class TradingPair(BaseModel):
         Raises:
             ValueError: If name is not provided
         """
+        # Handle both direct name parameter and model_validate cases
         name = data.get("name")
+        if not name and isinstance(data.get("__root__"), dict):
+            name = data["__root__"].get("name")
         if not name:
             raise ValueError("Trading pair name is required")
         if name in cls._instances:
@@ -50,6 +53,29 @@ class TradingPair(BaseModel):
         instance = super().__new__(cls)
         cls._instances[name] = instance
         return instance
+
+    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
+        """Override model_dump to ensure proper serialization.
+
+        Returns:
+            dict: A dictionary containing the trading pair data
+        """
+        return {"name": self.name}
+
+    @classmethod
+    def model_validate(cls, obj: Any, **kwargs: Any) -> "TradingPair":
+        """Override model_validate to handle deserialization.
+
+        Args:
+            obj: The object to validate and convert to a TradingPair
+            **kwargs: Additional keyword arguments
+
+        Returns:
+            TradingPair: The validated trading pair instance
+        """
+        if isinstance(obj, dict):
+            return cls(name=obj["name"])
+        return super().model_validate(obj, **kwargs)
 
     @field_validator("name", mode="before")
     @classmethod
@@ -147,7 +173,7 @@ class TradingPair(BaseModel):
     def __hash__(self) -> int:
         return hash(self.name)
 
-    def __deepcopy__(self, memo: dict) -> "TradingPair":
+    def __deepcopy__(self, memo: dict[int, Any] | None = None) -> "TradingPair":
         """Handle deep copying of the singleton instance.
 
         Since TradingPair is a singleton, deep copying should return the same instance.

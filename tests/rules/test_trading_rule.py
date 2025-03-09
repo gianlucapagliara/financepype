@@ -170,6 +170,54 @@ def test_trading_rule_serialization(basic_rule: TradingRule) -> None:
     assert isinstance(model_dump["max_notional_size"], str)
 
 
+def test_trading_rule_serialization_and_deserialization(
+    basic_rule: TradingRule,
+) -> None:
+    """Test complete serialization and deserialization cycle of TradingRule."""
+    # Serialize the rule to a dictionary
+    serialized_data = basic_rule.model_dump()
+
+    # Create a new instance from the serialized data
+    deserialized_rule = TradingRule.model_validate(serialized_data)
+
+    # Verify that the trading pair was correctly reconstructed
+    assert deserialized_rule.trading_pair == basic_rule.trading_pair
+    assert deserialized_rule.trading_pair.name == basic_rule.trading_pair.name
+    assert deserialized_rule.trading_pair.base == basic_rule.trading_pair.base
+    assert deserialized_rule.trading_pair.quote == basic_rule.trading_pair.quote
+
+    # Verify all decimal values were correctly reconstructed
+    assert deserialized_rule.min_order_size == basic_rule.min_order_size
+    assert deserialized_rule.max_order_size == basic_rule.max_order_size
+    assert deserialized_rule.min_price_increment == basic_rule.min_price_increment
+    assert (
+        deserialized_rule.min_base_amount_increment
+        == basic_rule.min_base_amount_increment
+    )
+    assert (
+        deserialized_rule.min_quote_amount_increment
+        == basic_rule.min_quote_amount_increment
+    )
+    assert deserialized_rule.min_notional_size == basic_rule.min_notional_size
+    assert deserialized_rule.max_notional_size == basic_rule.max_notional_size
+
+    # Verify other properties were correctly reconstructed
+    assert deserialized_rule.supported_order_types == basic_rule.supported_order_types
+    assert (
+        deserialized_rule.supported_order_modifiers
+        == basic_rule.supported_order_modifiers
+    )
+    assert (
+        deserialized_rule.buy_order_collateral_token
+        == basic_rule.buy_order_collateral_token
+    )
+    assert (
+        deserialized_rule.sell_order_collateral_token
+        == basic_rule.sell_order_collateral_token
+    )
+    assert deserialized_rule.is_live == basic_rule.is_live
+
+
 def test_derivative_rule_serialization(derivative_rule: DerivativeTradingRule) -> None:
     """Test serialization of strike price in derivative rule."""
     model_dump = derivative_rule.model_dump()
@@ -179,3 +227,46 @@ def test_derivative_rule_serialization(derivative_rule: DerivativeTradingRule) -
     derivative_rule.strike_price = None
     model_dump = derivative_rule.model_dump()
     assert model_dump["strike_price"] is None
+
+
+def test_derivative_rule_serialization_and_deserialization(
+    derivative_rule: DerivativeTradingRule,
+) -> None:
+    """Test complete serialization and deserialization cycle of DerivativeTradingRule."""
+    # Serialize the rule to a dictionary
+    serialized_data = derivative_rule.model_dump()
+
+    # Create a new instance from the serialized data
+    deserialized_rule = DerivativeTradingRule.model_validate(serialized_data)
+
+    # Verify that the trading pair was correctly reconstructed
+    assert deserialized_rule.trading_pair == derivative_rule.trading_pair
+    assert deserialized_rule.trading_pair.name == derivative_rule.trading_pair.name
+    assert deserialized_rule.trading_pair.base == derivative_rule.trading_pair.base
+    assert deserialized_rule.trading_pair.quote == derivative_rule.trading_pair.quote
+
+    # Verify derivative-specific fields were correctly reconstructed
+    assert deserialized_rule.underlying == derivative_rule.underlying
+    assert deserialized_rule.strike_price == derivative_rule.strike_price
+    assert deserialized_rule.start_timestamp == derivative_rule.start_timestamp
+    assert deserialized_rule.expiry_timestamp == derivative_rule.expiry_timestamp
+    assert deserialized_rule.index_symbol == derivative_rule.index_symbol
+    assert deserialized_rule.perpetual == derivative_rule.perpetual
+
+    # Verify inherited fields were correctly reconstructed
+    assert (
+        deserialized_rule.supported_order_types == derivative_rule.supported_order_types
+    )
+    assert (
+        deserialized_rule.supported_order_modifiers
+        == derivative_rule.supported_order_modifiers
+    )
+    assert (
+        deserialized_rule.buy_order_collateral_token
+        == derivative_rule.buy_order_collateral_token
+    )
+    assert (
+        deserialized_rule.sell_order_collateral_token
+        == derivative_rule.sell_order_collateral_token
+    )
+    assert deserialized_rule.is_live == derivative_rule.is_live
