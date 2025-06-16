@@ -372,7 +372,9 @@ class OrderDetails(MinimalOrderDetails):
             raise ValueError(
                 f"{self.order_type} is not in the list of supported order types"
             )
-        if self.order_modifiers.issubset(self.trading_rule.supported_order_modifiers):
+        if not self.order_modifiers.issubset(
+            self.trading_rule.supported_order_modifiers
+        ):
             raise ValueError(
                 f"{self.order_modifiers} is not in the list of supported order modifiers"
             )
@@ -466,57 +468,83 @@ class OperationSimulationResult(BaseModel):
     @property
     def opening_cashflow(self) -> dict[Asset, Decimal]:
         """Net cashflow at position opening for each asset."""
-        return {
-            cashflow.asset: cashflow.cashflow_amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.OPENING
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if cashflow.involvement_type != InvolvementType.OPENING:
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows
 
     @property
     def opening_outflows(self) -> dict[Asset, Decimal]:
         """Assets leaving the account at position opening."""
-        return {
-            cashflow.asset: cashflow.cashflow_amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.OPENING
-            and cashflow.is_outflow
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if (
+                cashflow.involvement_type != InvolvementType.OPENING
+                or not cashflow.is_outflow
+            ):
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows
 
     @property
     def opening_inflows(self) -> dict[Asset, Decimal]:
         """Assets entering the account at position opening."""
-        return {
-            cashflow.asset: cashflow.cashflow_amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.OPENING
-            and cashflow.is_inflow
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if (
+                cashflow.involvement_type != InvolvementType.OPENING
+                or not cashflow.is_inflow
+            ):
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows
 
     @property
     def closing_cashflow(self) -> dict[Asset, Decimal]:
         """Net cashflow at position closing for each asset."""
-        return {
-            cashflow.asset: cashflow.amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.CLOSING
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if cashflow.involvement_type != InvolvementType.CLOSING:
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows
 
     @property
     def closing_outflows(self) -> dict[Asset, Decimal]:
         """Assets leaving the account at position closing."""
-        return {
-            cashflow.asset: cashflow.amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.CLOSING
-            and cashflow.is_outflow
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if (
+                cashflow.involvement_type != InvolvementType.CLOSING
+                or not cashflow.is_outflow
+            ):
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows
 
     @property
     def closing_inflows(self) -> dict[Asset, Decimal]:
         """Assets entering the account at position closing."""
-        return {
-            cashflow.asset: cashflow.cashflow_amount
-            for cashflow in self.cashflows
-            if cashflow.involvement_type == InvolvementType.CLOSING
-            and cashflow.is_inflow
-        }
+        cashflows: dict[Asset, Decimal] = {}
+        for cashflow in self.cashflows:
+            if (
+                cashflow.involvement_type != InvolvementType.CLOSING
+                or not cashflow.is_inflow
+            ):
+                continue
+            cashflows[cashflow.asset] = (
+                cashflows.get(cashflow.asset, s_decimal_0) + cashflow.cashflow_amount
+            )
+        return cashflows

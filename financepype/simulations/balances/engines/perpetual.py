@@ -469,7 +469,7 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
     """
 
     @classmethod
-    def _get_outflow_asset(cls, order_details: OrderDetails) -> Asset:
+    def _get_outflow_asset(cls, order_details: MinimalOrderDetails) -> Asset:
         """Get the collateral asset for margin.
 
         For regular perpetuals, this is determined by the trading rule:
@@ -560,7 +560,7 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
     """
 
     @classmethod
-    def _get_outflow_asset(cls, order_details: OrderDetails) -> Asset:
+    def _get_outflow_asset(cls, order_details: MinimalOrderDetails) -> Asset:
         """Get the collateral asset for margin.
 
         For inverse perpetuals, this is always the base currency
