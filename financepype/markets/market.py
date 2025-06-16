@@ -187,6 +187,10 @@ class MarketType(Enum):
             MarketType.SPOT,
             MarketType.FUTURE,
             MarketType.PERPETUAL,
+            MarketType.EQUITY,
+            MarketType.CALL_OPTION,
+            MarketType.PUT_OPTION,
+            MarketType.VOLATILITY,
         ]
 
 
@@ -279,7 +283,8 @@ class MarketInfo(BaseModel):
             return f"{self.base}-{self.quote}-{self.market_type.value}-{timeframe_type.value}-{expiry_date.strftime('%Y%m%d')}-{self.strike_price}"
         elif self.is_future:
             timeframe_type = cast(MarketTimeframe, self.timeframe_type)
-            return f"{self.base}-{self.quote}-{self.market_type.value}-{timeframe_type.value}"
+            expiry_date = cast(datetime, self.expiry_date)
+            return f"{self.base}-{self.quote}-{self.market_type.value}-{timeframe_type.value}-{expiry_date.strftime('%Y%m%d')}"
         else:
             raise ValueError("Invalid instrument type")
 
