@@ -143,6 +143,38 @@ class OperatorFactory:
         return cls.create_operator(operator_class, config)
 
     @classmethod
+    def get_by_identifier(cls, identifier: str) -> Operator:
+        """Get a operator instance by its identifier.
+
+        This method is useful to retrieve an operator instance without having to
+        use the platform class.
+
+        Args:
+            identifier: The identifier of the operator to retrieve
+
+        Returns:
+            The operator instance
+
+        Raises:
+            ValueError: If multiple operator classes are found for the identifier
+            ValueError: If no operator class is found for the identifier
+        """
+        possible_matches = [
+            platform
+            for platform in cls._platform_class_mapping.keys()
+            if platform.identifier == identifier
+        ]
+
+        if len(possible_matches) > 1:
+            raise ValueError(
+                f"Multiple operator classes found for identifier {identifier}"
+            )
+        elif len(possible_matches) == 0:
+            raise ValueError(f"No operator class found for identifier {identifier}")
+
+        return cls.get(possible_matches[0])
+
+    @classmethod
     def get_configuration(cls, platform: Platform) -> OperatorConfiguration | None:
         """Get a registered configuration for a platform.
 

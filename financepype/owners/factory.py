@@ -140,6 +140,39 @@ class OwnerFactory:
         return cls.create_owner(owner_class, config)
 
     @classmethod
+    def get_by_name(cls, name: str, platform: Platform | None = None) -> Owner:
+        """Get an owner instance by its identifier.
+
+        This method is useful to retrieve an owner instance without having to
+        use the platform class.
+
+        Args:
+            name: The name of the owner to retrieve
+            platform: The platform to get the owner for (optional)
+
+        Returns:
+            The owner instance
+
+        Raises:
+            ValueError: If multiple owner classes are found for the name
+            ValueError: If no owner class is found for the name
+        """
+
+        possible_matches = [
+            identifier
+            for identifier in cls._configurations.keys()
+            if identifier.name == name
+            and (platform is None or identifier.platform == platform)
+        ]
+
+        if len(possible_matches) > 1:
+            raise ValueError(f"Multiple owner classes found for name {name}")
+        elif len(possible_matches) == 0:
+            raise ValueError(f"No owner class found for name {name}")
+
+        return cls.get(possible_matches[0])
+
+    @classmethod
     def get_configuration(
         cls, identifier: OwnerIdentifier
     ) -> OwnerConfiguration | None:
