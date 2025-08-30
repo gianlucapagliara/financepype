@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "financepype"
-version = "0.1.9"
+version = "0.1.10"
 description = "FinancePype is a Python library for trading on centralized and decentralized exchanges."
 authors = ["Gianluca Pagliara <pagliara.gianluca@gmail.com>"]
 readme = "README.md"
