@@ -29,7 +29,7 @@ def mock_aws_secrets_data() -> dict[str, Any]:
 
 
 @pytest.fixture
-def mock_aws_client() -> Generator[MagicMock, None, None]:
+def mock_aws_client() -> Generator[MagicMock]:
     with patch("boto3.session.Session") as mock_session:
         mock_client = MagicMock()
         mock_session.return_value.client.return_value = mock_client

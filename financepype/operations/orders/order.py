@@ -2,9 +2,9 @@ import asyncio
 import math
 from decimal import Decimal
 from typing import Any
+from warnings import deprecated
 
 from pydantic import Field
-from typing_extensions import deprecated
 
 from financepype.constants import s_decimal_0
 from financepype.markets.trading_pair import TradingPair

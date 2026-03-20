@@ -9,7 +9,7 @@ from financepype.platforms.platform import Platform
 
 
 @pytest.fixture(autouse=True)
-def clear_caches() -> Generator[None, None, None]:
+def clear_caches() -> Generator[None]:
     """Clear all caches before each test."""
     # Reset AssetFactory to its initial state
     AssetFactory.reset()

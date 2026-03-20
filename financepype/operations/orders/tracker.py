@@ -2,8 +2,7 @@ import asyncio
 from collections.abc import Callable
 from decimal import Decimal
 from typing import Any, cast
-
-from typing_extensions import deprecated
+from warnings import deprecated
 
 from financepype.operations.fees import OperationFee
 from financepype.operations.orders.events import (

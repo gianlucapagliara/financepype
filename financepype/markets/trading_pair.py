@@ -1,7 +1,7 @@
 from typing import Any, ClassVar
+from warnings import deprecated
 
 from pydantic import BaseModel, field_validator
-from typing_extensions import deprecated
 
 from financepype.markets.market import MarketInfo, MarketType
 

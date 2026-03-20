@@ -55,14 +55,16 @@ def mock_transaction():
 
     # Mock property getters
     type(transaction).is_closed = property(
-        lambda self: self.current_state
-        in [
-            BlockchainTransactionState.CONFIRMED,
-            BlockchainTransactionState.FINALIZED,
-            BlockchainTransactionState.FAILED,
-            BlockchainTransactionState.REJECTED,
-            BlockchainTransactionState.CANCELLED,
-        ]
+        lambda self: (
+            self.current_state
+            in [
+                BlockchainTransactionState.CONFIRMED,
+                BlockchainTransactionState.FINALIZED,
+                BlockchainTransactionState.FAILED,
+                BlockchainTransactionState.REJECTED,
+                BlockchainTransactionState.CANCELLED,
+            ]
+        )
     )
     type(transaction).is_completed = property(
         lambda self: self.current_state == BlockchainTransactionState.CONFIRMED
@@ -74,11 +76,13 @@ def mock_transaction():
         lambda self: self.current_state == BlockchainTransactionState.CANCELLED
     )
     type(transaction).is_failure = property(
-        lambda self: self.current_state
-        in [
-            BlockchainTransactionState.FAILED,
-            BlockchainTransactionState.REJECTED,
-        ]
+        lambda self: (
+            self.current_state
+            in [
+                BlockchainTransactionState.FAILED,
+                BlockchainTransactionState.REJECTED,
+            ]
+        )
     )
 
     # Add specific state checkers

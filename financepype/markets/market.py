@@ -3,9 +3,9 @@ from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Self, cast
+from warnings import deprecated
 
 from pydantic import BaseModel, Field, model_validator
-from typing_extensions import deprecated
 
 FORMAT = "{str_base}-{str_quote}{str_type}{str_timeframe}{str_expiry}{str_price}{str_price_short}"
 
