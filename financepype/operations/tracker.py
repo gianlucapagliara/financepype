@@ -285,4 +285,4 @@ class OperationTracker:
             event (Any): The event data to publish
         """
         for event_publisher in self._event_publishers:
-            event_publisher.trigger_event(event_publication, event)
+            event_publisher.publish(event_publication, event)

@@ -176,4 +176,4 @@ def test_trigger_event(
 
     tracker.trigger_event(event_publication, event)
 
-    mock_publisher.trigger_event.assert_called_once_with(event_publication, event)
+    mock_publisher.publish.assert_called_once_with(event_publication, event)
