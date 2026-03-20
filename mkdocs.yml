@@ -1,0 +1,58 @@
+site_name: FinancePype
+site_url: https://gianlucapagliara.github.io/financepype/
+site_description: A Python library for trading on centralized and decentralized exchanges.
+site_author: Gianluca Pagliara
+repo_url: https://github.com/gianlucapagliara/financepype
+repo_name: gianlucapagliara/financepype
+
+theme:
+  name: readthedocs
+  highlightjs: true
+  hljs_languages:
+    - python
+    - bash
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - toc:
+      permalink: true
+  - codehilite:
+      guess_lang: false
+  - def_list
+  - attr_list
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+  - User Guide:
+      - Assets: guide/assets.md
+      - Markets: guide/markets.md
+      - Operations: guide/operations.md
+      - Operators: guide/operators.md
+      - Owners: guide/owners.md
+      - Platforms: guide/platforms.md
+      - Trading Rules: guide/rules.md
+      - Secrets: guide/secrets.md
+      - Simulations: guide/simulations.md
+      - Data Loaders: guide/data-loaders.md
+  - API Reference:
+      - Assets: api/assets.md
+      - Markets: api/markets.md
+      - Operations: api/operations.md
+      - Orders: api/orders.md
+      - Transactions: api/transactions.md
+      - Operators: api/operators.md
+      - Owners: api/owners.md
+      - Platforms: api/platforms.md
+      - Trading Rules: api/rules.md
+      - Secrets: api/secrets.md
+      - Simulations: api/simulations.md
+      - Data Loaders: api/data-loaders.md
+      - Constants: api/constants.md
+  - Development:
+      - Contributing: development/contributing.md
