@@ -131,7 +131,7 @@ def test_perpetual_calculate_pnl_long_profit(
 ) -> None:
     """Test PnL calculation for regular perpetual long position with profit."""
     # Create a new order details with entry price
-    entry_order_details = OrderDetails(
+    _entry_order_details = OrderDetails(
         platform=order_details.platform,
         trading_pair=order_details.trading_pair,
         trading_rule=order_details.trading_rule,
@@ -183,7 +183,7 @@ def test_perpetual_calculate_pnl_short_profit(
 ) -> None:
     """Test PnL calculation for regular perpetual short position with profit."""
     # Create a new order details with entry price
-    entry_order_details = OrderDetails(
+    _entry_order_details = OrderDetails(
         platform=order_details.platform,
         trading_pair=order_details.trading_pair,
         trading_rule=order_details.trading_rule,
@@ -235,7 +235,7 @@ def test_inverse_calculate_pnl_long_profit(
 ) -> None:
     """Test PnL calculation for inverse perpetual long position with profit."""
     # Create a new order details with entry price
-    entry_order_details = OrderDetails(
+    _entry_order_details = OrderDetails(
         platform=order_details.platform,
         trading_pair=order_details.trading_pair,
         trading_rule=order_details.trading_rule,
@@ -290,7 +290,7 @@ def test_inverse_calculate_pnl_short_profit(
 ) -> None:
     """Test PnL calculation for inverse perpetual short position with profit."""
     # Create a new order details with entry price
-    entry_order_details = OrderDetails(
+    _entry_order_details = OrderDetails(
         platform=order_details.platform,
         trading_pair=order_details.trading_pair,
         trading_rule=order_details.trading_rule,

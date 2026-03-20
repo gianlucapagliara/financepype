@@ -314,42 +314,45 @@ class OrderDetails(MinimalOrderDetails):
     def check_position_action_consistency(self) -> None:
         """Check position action consistency."""
         if self.position_action == PositionAction.OPEN:
-            if (
-                self.current_position is not None
-                and self.current_position.position_side
-                != self.trade_type.to_position_side()
-            ):
-                raise ValueError(
-                    "Current position side must match trade type for opening a new position"
-                )
+            self._check_open_consistency()
         elif self.position_action == PositionAction.CLOSE:
-            if self.current_position is None:
-                raise ValueError("Current position must be provided for closing")
-            if (
-                self.current_position.position_side
-                == self.trade_type.to_position_side()
-            ):
-                raise ValueError(
-                    "Current position side must not match trade type for closing"
-                )
-            if self.amount > self.current_position.amount:
-                raise ValueError(
-                    "Order amount must be less than or equal to current position amount for closing, otherwise it would be a flip"
-                )
+            self._check_close_consistency()
         elif self.position_action == PositionAction.FLIP:
-            if self.current_position is None:
-                raise ValueError("Current position must be provided for flipping")
-            if (
-                self.current_position.position_side
-                == self.trade_type.to_position_side()
-            ):
-                raise ValueError(
-                    "Current position side must not match trade type for flipping"
-                )
-            if self.amount <= self.current_position.amount:
-                raise ValueError(
-                    "Order amount must be greater than current position amount for flipping"
-                )
+            self._check_flip_consistency()
+
+    def _check_open_consistency(self) -> None:
+        if (
+            self.current_position is not None
+            and self.current_position.position_side
+            != self.trade_type.to_position_side()
+        ):
+            raise ValueError(
+                "Current position side must match trade type for opening a new position"
+            )
+
+    def _check_close_consistency(self) -> None:
+        if self.current_position is None:
+            raise ValueError("Current position must be provided for closing")
+        if self.current_position.position_side == self.trade_type.to_position_side():
+            raise ValueError(
+                "Current position side must not match trade type for closing"
+            )
+        if self.amount > self.current_position.amount:
+            raise ValueError(
+                "Order amount must be less than or equal to current position amount for closing, otherwise it would be a flip"
+            )
+
+    def _check_flip_consistency(self) -> None:
+        if self.current_position is None:
+            raise ValueError("Current position must be provided for flipping")
+        if self.current_position.position_side == self.trade_type.to_position_side():
+            raise ValueError(
+                "Current position side must not match trade type for flipping"
+            )
+        if self.amount <= self.current_position.amount:
+            raise ValueError(
+                "Order amount must be greater than current position amount for flipping"
+            )
 
     def check_potential_failure(self, current_timestamp: float | None = None) -> None:
         """Check if the order would fail based on trading rules.
