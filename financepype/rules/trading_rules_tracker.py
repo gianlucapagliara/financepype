@@ -306,7 +306,7 @@ class TradingRulesTracker(ABC):
         """
         raise NotImplementedError
 
-    async def update_loop(self, interval_seconds: float):
+    async def update_loop(self, interval_seconds: float) -> None:
         """
         Updates the trading rules by requesting the latest definitions from the exchange.
         Executes regularly every 30 minutes

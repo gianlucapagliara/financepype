@@ -216,7 +216,7 @@ class OwnerFactory:
         """
         identifier = configuration.identifier
         if identifier in cls._cache:
-            return cls._cache[identifier]  # type: ignore
+            return cls._cache[identifier]
 
         owner = owner_class(configuration=configuration)
         cls._cache[identifier] = owner

@@ -90,7 +90,7 @@ class OrderBookTracker(MultiPublisher, ABC):
     def ready(self) -> bool:
         return self._order_books_initialized.is_set()
 
-    def start(self):
+    def start(self) -> None:
         self.stop(restart=True)
 
         if len(self.trading_pairs) > 0:
@@ -109,7 +109,7 @@ class OrderBookTracker(MultiPublisher, ABC):
             self._emit_trade_event_loop()
         )
 
-    def stop(self, restart: bool = False):
+    def stop(self, restart: bool = False) -> None:
         if self._init_order_books_task is not None:
             self._init_order_books_task.cancel()
             self._init_order_books_task = None

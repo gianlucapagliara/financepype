@@ -406,7 +406,7 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the price and available volume
         """
-        cumulative_volume = 0
+        cumulative_volume = 0.0
         result_price = float("NaN")
 
         if is_buy:
@@ -439,8 +439,8 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the VWAP and available volume
         """
-        total_cost = 0
-        total_volume = 0
+        total_cost = 0.0
+        total_volume = 0.0
         result_vwap = float("NaN")
 
         if volume == 0:
@@ -491,7 +491,7 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the price and available volume
         """
-        cumulative_volume = 0
+        cumulative_volume = 0.0
         result_price = float("NaN")
 
         if is_buy:
@@ -529,9 +529,9 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the required quote currency volume
         """
-        cumulative_volume = 0
-        cumulative_base_amount = 0
-        row_amount = 0
+        cumulative_volume = 0.0
+        cumulative_base_amount = 0.0
+        row_amount = 0.0
 
         if is_buy:
             for order_book_row in self.ask_entries():
@@ -569,7 +569,7 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the available volume
         """
-        cumulative_volume = 0
+        cumulative_volume = 0.0
         result_price = float("NaN")
 
         if is_buy:
@@ -604,7 +604,7 @@ class OrderBook:
         Returns:
             OrderBookQueryResult with the available quote currency volume
         """
-        cumulative_volume = 0
+        cumulative_volume = 0.0
         result_price = float("NaN")
 
         if is_buy:

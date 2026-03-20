@@ -52,7 +52,7 @@ class OrderTracker(OperationTracker):
 
     # === Tracking ===
 
-    def restore_tracking_states(self, tracking_states: dict[str, Any]):
+    def restore_tracking_states(self, tracking_states: dict[str, Any]) -> None:
         """
         Restore in-flight orders from saved tracking states.
         :param tracking_states: a dictionary associating order ids with the serialized order (JSON format).
@@ -143,7 +143,7 @@ class OrderTracker(OperationTracker):
         tracked_order: OrderOperation,
         order_update: OrderUpdate,
         current_timestamp_function: Callable[[], float],
-    ):
+    ) -> None:
         try:
             await asyncio.wait_for(
                 tracked_order.wait_until_completely_filled(),
@@ -163,7 +163,7 @@ class OrderTracker(OperationTracker):
         self,
         trade_update: TradeUpdate,
         current_timestamp_function: Callable[[], float],
-    ):
+    ) -> None:
         tracked_order: OrderOperation | None = cast(
             OrderOperation | None,
             self.fetch_operation(
@@ -236,7 +236,9 @@ class OrderTracker(OperationTracker):
 
     # === Event Triggers ===
 
-    def _trigger_created_event(self, order: OrderOperation, current_timestamp: float):
+    def _trigger_created_event(
+        self, order: OrderOperation, current_timestamp: float
+    ) -> None:
         self.trigger_event(
             OrderPublications.created_publication,
             OrderCreatedEvent(
@@ -249,7 +251,9 @@ class OrderTracker(OperationTracker):
             ),
         )
 
-    def _trigger_cancelled_event(self, order: OrderOperation, current_timestamp: float):
+    def _trigger_cancelled_event(
+        self, order: OrderOperation, current_timestamp: float
+    ) -> None:
         self.trigger_event(
             OrderPublications.cancelled_publication,
             OrderCancelledEvent(
@@ -270,7 +274,7 @@ class OrderTracker(OperationTracker):
         fill_fee: OperationFee,
         trade_id: str,
         current_timestamp: float,
-    ):
+    ) -> None:
         self.trigger_event(
             OrderPublications.filled_publication,
             OrderFilledEvent(
@@ -286,7 +290,9 @@ class OrderTracker(OperationTracker):
             ),
         )
 
-    def _trigger_completed_event(self, order: OrderOperation, current_timestamp: float):
+    def _trigger_completed_event(
+        self, order: OrderOperation, current_timestamp: float
+    ) -> None:
         self.trigger_event(
             OrderPublications.completed_publication,
             OrderCompletedEvent(
@@ -303,7 +309,9 @@ class OrderTracker(OperationTracker):
             ),
         )
 
-    def _trigger_failure_event(self, order: OrderOperation, current_timestamp: float):
+    def _trigger_failure_event(
+        self, order: OrderOperation, current_timestamp: float
+    ) -> None:
         self.trigger_event(
             OrderPublications.failure_publication,
             OrderFailureEvent(
@@ -322,7 +330,7 @@ class OrderTracker(OperationTracker):
         previous_state: OrderState,
         new_state: OrderState,
         current_timestamp: float,
-    ):
+    ) -> None:
         if (
             previous_state == OrderState.PENDING_CREATE
             and new_state != OrderState.FAILED
@@ -341,7 +349,7 @@ class OrderTracker(OperationTracker):
         fill_fee: OperationFee,
         trade_id: str,
         current_timestamp: float,
-    ):
+    ) -> None:
         if prev_executed_amount_base < tracked_order.executed_amount_base:
             self.logger().debug(
                 f"The {tracked_order.trade_type.name.upper()} order {tracked_order.client_operation_id} "
@@ -362,7 +370,7 @@ class OrderTracker(OperationTracker):
         tracked_order: OrderOperation,
         order_update: OrderUpdate,
         current_timestamp: float,
-    ):
+    ) -> None:
         if tracked_order.is_open:
             return
 
@@ -396,7 +404,7 @@ class OrderTracker(OperationTracker):
         self,
         tracked_order: OrderOperation,
         current_timestamp: float,
-    ):
+    ) -> None:
         self.trigger_event(
             OrderPublications.cancel_failure_publication,
             OrderCancelFailureEvent(

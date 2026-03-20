@@ -67,12 +67,19 @@ class CashflowReason(Enum):
     - MARGIN: Margin used for the operation
     - FEE: Trading fees, commissions, etc.
     - PNL: Profit or loss from the operation
+    - FUNDING: Funding rate payment (for perpetual positions)
+    - COLLATERAL: Collateral deposit/return (for borrow/staking operations)
+    - INTEREST: Interest payment (for borrow operations)
     """
 
     OPERATION = "operation"
     MARGIN = "margin"
     FEE = "fee"
     PNL = "pnl"
+    FUNDING = "funding"
+    COLLATERAL = "collateral"
+    INTEREST = "interest"
+    REWARD = "reward"
 
 
 class InvolvementType(Enum):
@@ -438,6 +445,100 @@ class OrderDetails(MinimalOrderDetails):
             }
         )
         return [close_order, open_order]
+
+
+class StakingOrderDetails(BaseModel):
+    """Details for a staking operation simulation.
+
+    Attributes:
+        platform: Trading platform
+        staked_asset: The asset being staked
+        reward_asset: The asset in which rewards are paid
+        amount: Amount being staked
+        reward_rate: Annual reward rate (percentage, APY)
+        lock_period: Lock period in seconds (0 for no lock)
+        position_action: Opening or closing the staking position
+        current_position: Current position (required for closing)
+        fee: Fee structure for the operation
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    platform: Platform = Field(description="Trading platform")
+    staked_asset: Asset = Field(description="The asset being staked")
+    reward_asset: Asset = Field(description="The asset in which rewards are paid")
+    amount: Decimal = Field(description="Amount being staked")
+    reward_rate: Decimal = Field(description="Annual reward rate (percentage, APY)")
+    lock_period: int = Field(
+        default=0, description="Lock period in seconds (0 for no lock)"
+    )
+    position_action: PositionAction = Field(
+        description="Opening or closing the position"
+    )
+    current_position: Position | None = Field(
+        default=None,
+        description="Current position (required for closing)",
+    )
+    fee: OperationFee = Field(description="Fee structure for the operation")
+
+
+class BorrowOrderDetails(BaseModel):
+    """Details for a borrowing/lending operation simulation.
+
+    Attributes:
+        platform: Trading platform
+        borrowed_asset: The asset being borrowed
+        collateral_asset: The asset used as collateral
+        amount: Amount being borrowed
+        collateral_amount: Amount of collateral deposited
+        interest_rate: Annual interest rate (percentage)
+        position_action: Opening or closing the borrow position
+        current_position: Current position (required for closing)
+        fee: Fee structure for the operation
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    platform: Platform = Field(description="Trading platform")
+    borrowed_asset: Asset = Field(description="The asset being borrowed")
+    collateral_asset: Asset = Field(description="The asset used as collateral")
+    amount: Decimal = Field(description="Amount being borrowed")
+    collateral_amount: Decimal = Field(description="Amount of collateral deposited")
+    interest_rate: Decimal = Field(description="Annual interest rate (percentage)")
+    position_action: PositionAction = Field(
+        description="Opening or closing the position"
+    )
+    current_position: Position | None = Field(
+        default=None,
+        description="Current position (required for closing)",
+    )
+    fee: OperationFee = Field(description="Fee structure for the operation")
+
+
+class FundingOrderDetails(BaseModel):
+    """Details for a funding rate payment simulation.
+
+    Attributes:
+        platform: Trading platform
+        position_asset: The perpetual asset (e.g., BTC-PERP)
+        settlement_asset: The asset used for settlement (e.g., USDT)
+        position_size: Size of the position
+        funding_rate: Current funding rate (percentage)
+        payment_period: Funding payment period in seconds
+        position_side: Side of the position (LONG/SHORT)
+        fee: Fee structure for the operation
+    """
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    platform: Platform = Field(description="Trading platform")
+    position_asset: Asset = Field(description="The perpetual asset")
+    settlement_asset: Asset = Field(description="The asset used for settlement")
+    position_size: Decimal = Field(description="Size of the position")
+    funding_rate: Decimal = Field(description="Current funding rate (percentage)")
+    payment_period: int = Field(description="Funding payment period in seconds")
+    position_side: str = Field(description="Side of the position (LONG/SHORT)")
+    fee: OperationFee = Field(description="Fee structure for the operation")
 
 
 class OperationSimulationResult(BaseModel):

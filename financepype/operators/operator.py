@@ -106,7 +106,7 @@ class OperatorProcessor(NetworkProcessor):
 
     # === Loops ===
 
-    async def update_loop(self, interval_seconds: float):
+    async def update_loop(self, interval_seconds: float) -> None:
         while True:
             try:
                 await self._poll_notifier.wait()
