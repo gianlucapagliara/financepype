@@ -177,15 +177,15 @@ wheels = [
 
 [[package]]
 name = "chronopype"
-version = "0.6.0"
+version = "0.8.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "eventspype" },
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/e7/f6/28509d5657da84e30690238c85dfd1770a86194698033bfb8210a99a2dcb/chronopype-0.6.0.tar.gz", hash = "sha256:7436ba30f283f9f6394b83ac33ec0e69a3ed7e8b8971b1a7d9f32151e407c976", size = 86782, upload-time = "2026-03-20T18:02:39.046Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/40/1dcb0f43715de9e941072975da0b56fbdfec630157227a8e6700b754e232/chronopype-0.8.1.tar.gz", hash = "sha256:5853f718b6c4a2f93b170a21d7587d8fa447c5db2b5979c777c643cecfcb5f07", size = 99541, upload-time = "2026-03-22T08:11:57.75Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/60/82/f20483085d8649d6e5a3f6e48aafa3b713344baab4bd64c0e413e11584ae/chronopype-0.6.0-py3-none-any.whl", hash = "sha256:bb00ed53d69a82f7406910853caa573a44d9210ee528296f945ef759d7d31f1b", size = 20226, upload-time = "2026-03-20T18:02:40.209Z" },
+    { url = "https://files.pythonhosted.org/packages/80/1e/247ef76690886913e8f4b8050c38abb34011b8d723cb3e0af897c81da5e6/chronopype-0.8.1-py3-none-any.whl", hash = "sha256:0a81418180a7a1a23a3a4f92d4e2eb7d64569b309dd4c9c150029885a2208a31", size = 25512, upload-time = "2026-03-22T08:11:56.59Z" },
 ]
 
 [[package]]
@@ -311,7 +311,7 @@ wheels = [
 
 [[package]]
 name = "financepype"
-version = "0.2.0"
+version = "0.2.1"
 source = { editable = "." }
 dependencies = [
     { name = "bidict" },
@@ -345,7 +345,7 @@ requires-dist = [
     { name = "bidict", specifier = ">=0.23.1,<1" },
     { name = "boto3", specifier = ">=1.35.90,<2" },
     { name = "cachetools", specifier = ">=4.2.2,<5" },
-    { name = "chronopype", specifier = ">=0.6.0,<1" },
+    { name = "chronopype", specifier = ">=0.7.3,<1" },
     { name = "eventspype", specifier = ">=1.1.0,<2" },
     { name = "pandas", specifier = ">=2.2.1,<3" },
     { name = "pydantic", specifier = ">=2.10.4,<3" },
