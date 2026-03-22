@@ -236,11 +236,19 @@ class BaseOptionBalanceEngine(BalanceEngine):
         collateral_asset = cls._get_outflow_asset(order_details)
 
         # Get position assets
-        position_asset = AssetFactory.get_asset(
-            order_details.platform,
-            order_details.trading_pair.name,
-            side=order_details.trade_type.to_position_side(),
-        )
+        if order_details.position_action == PositionAction.CLOSE:
+            # When closing, the position asset is the opposite side (delivering existing position)
+            position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.opposite().to_position_side(),
+            )
+        else:
+            position_asset = AssetFactory.get_asset(
+                order_details.platform,
+                order_details.trading_pair.name,
+                side=order_details.trade_type.to_position_side(),
+            )
 
         # Add position asset flows based on action
         if order_details.position_action == PositionAction.OPEN:
