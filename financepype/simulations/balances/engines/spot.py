@@ -2,6 +2,7 @@ from decimal import Decimal
 
 from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
+from financepype.constants import s_decimal_100
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import TradeType
 from financepype.simulations.balances.engines.engine import BalanceEngine
@@ -158,13 +159,11 @@ class SpotBalanceEngine(BalanceEngine):
             if is_quote_currency_fee:
                 # Quote currency fees are based on notional value
                 notional_value = order_details.amount * order_details.price
-                fee_amount = notional_value * (
-                    order_details.fee.amount / Decimal("100")
-                )
+                fee_amount = notional_value * (order_details.fee.amount / s_decimal_100)
             else:
                 # Base currency fees are based on trade amount
                 fee_amount = order_details.amount * (
-                    order_details.fee.amount / Decimal("100")
+                    order_details.fee.amount / s_decimal_100
                 )
 
             return {expected_asset: fee_amount}

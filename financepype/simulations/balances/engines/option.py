@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from financepype.assets.asset import Asset
 from financepype.assets.factory import AssetFactory
-from financepype.constants import s_decimal_0, s_decimal_NaN
+from financepype.constants import s_decimal_0, s_decimal_100, s_decimal_NaN
 from financepype.markets.market import MarketType
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import PositionAction, TradeType
@@ -180,7 +180,7 @@ class BaseOptionBalanceEngine(BalanceEngine):
         if order_details.fee.fee_type == FeeType.PERCENTAGE:
             # Calculate based on premium value
             premium = cls._calculate_premium(order_details)
-            fee_amount = premium * (order_details.fee.amount / Decimal("100"))
+            fee_amount = premium * (order_details.fee.amount / s_decimal_100)
             return fee_amount
 
         # Handle unsupported fee types

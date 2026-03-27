@@ -5,6 +5,7 @@ from typing import cast
 from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeSide
 from financepype.assets.factory import AssetFactory
+from financepype.constants import s_decimal_100
 from financepype.markets.position import Position
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import PositionAction, TradeType
@@ -171,7 +172,7 @@ class BasePerpetualBalanceEngine(BalanceEngine):
         if order_details.fee.fee_type == FeeType.PERCENTAGE:
             # Calculate based on notional value
             notional_value = cls._notional_value(order_details)
-            fee_amount = notional_value * (order_details.fee.amount / Decimal("100"))
+            fee_amount = notional_value * (order_details.fee.amount / s_decimal_100)
             return fee_amount
 
         # Handle unsupported fee types

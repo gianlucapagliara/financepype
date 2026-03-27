@@ -1,9 +1,9 @@
+from dataclasses import FrozenInstanceError
 from datetime import datetime
 from decimal import Decimal
 from typing import Any
 
 import pytest
-from pydantic import ValidationError
 
 from financepype.markets.trade import PublicTrade
 from financepype.markets.trading_pair import TradingPair
@@ -43,7 +43,7 @@ def test_public_trade_initialization(valid_trade_data: dict[str, Any]) -> None:
 def test_public_trade_immutability(valid_trade_data: dict[str, Any]) -> None:
     """Test that PublicTrade instances are immutable."""
     trade = PublicTrade(**valid_trade_data)
-    with pytest.raises(ValidationError):
+    with pytest.raises((AttributeError, FrozenInstanceError)):
         trade.price = Decimal("55000.00")
 
 

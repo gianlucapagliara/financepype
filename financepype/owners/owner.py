@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from abc import abstractmethod
+from collections.abc import Mapping
 from decimal import Decimal
 from typing import Any, cast
 
@@ -330,11 +331,11 @@ class Owner(MultiPublisher):
         )
         return self.balance_tracker.get_position(asset)
 
-    def get_all_positions(self) -> dict[DerivativeContract, Position]:
+    def get_all_positions(self) -> Mapping[DerivativeContract, Position]:
         """Get all active positions.
 
         Returns:
-            dict[DerivativeContract, Position]: Map of contracts to positions
+            Mapping[DerivativeContract, Position]: Map of contracts to positions
         """
         return self.balance_tracker.positions
 

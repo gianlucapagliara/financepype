@@ -1,9 +1,8 @@
+from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import cast
-
-from pydantic import BaseModel
 
 from financepype.constants import s_decimal_0
 
@@ -57,7 +56,8 @@ class CandleType(Enum):
     ACCRUED_FUNDING = "ACCRUED_FUNDING"
 
 
-class Candle(BaseModel):
+@dataclass(slots=True)
+class Candle:
     """Represents a single candlestick in a financial chart.
 
     A candle represents price movement over a specific time period, including
@@ -178,10 +178,12 @@ class Candle(BaseModel):
         if not candles:
             raise ValueError("No candles provided")
 
-        current_interval = (candles[0].end_time - candles[0].start_time).seconds
+        current_interval = int(
+            (candles[0].end_time - candles[0].start_time).total_seconds()
+        )
 
         for candle in candles[1:]:
-            interval = (candle.end_time - candle.start_time).seconds
+            interval = int((candle.end_time - candle.start_time).total_seconds())
             if interval != current_interval:
                 raise ValueError("Candles have different intervals")
 

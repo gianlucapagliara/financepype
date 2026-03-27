@@ -50,10 +50,12 @@ Example:
     >>> tracker.lock_balance(lock)
 """
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from types import MappingProxyType
 
 from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeContract
@@ -167,29 +169,29 @@ class BalanceTracker:
         self._balance_history: list[BalanceChange] = []
 
     @property
-    def balance_history(self) -> list[BalanceChange]:
+    def balance_history(self) -> tuple[BalanceChange, ...]:
         """Record of all balance changes (if history tracking is enabled)."""
-        return self._balance_history.copy()
+        return tuple(self._balance_history)
 
     @property
-    def total_balances(self) -> dict[Asset, Decimal]:
+    def total_balances(self) -> Mapping[Asset, Decimal]:
         """All assets owned by the account."""
-        return self._total_balances.copy()
+        return MappingProxyType(self._total_balances)
 
     @property
-    def available_balances(self) -> dict[Asset, Decimal]:
+    def available_balances(self) -> Mapping[Asset, Decimal]:
         """Assets that are free for trading."""
-        return self._available_balances.copy()
+        return MappingProxyType(self._available_balances)
 
     @property
-    def positions(self) -> dict[DerivativeContract, Position]:
+    def positions(self) -> Mapping[DerivativeContract, Position]:
         """Currently open positions."""
-        return self._positions.copy()
+        return MappingProxyType(self._positions)
 
     @property
-    def locks(self) -> dict[Asset, dict[str, BalanceLock]]:
+    def locks(self) -> Mapping[Asset, Mapping[str, BalanceLock]]:
         """Currently locked balances by asset and purpose."""
-        return self._locks.copy()
+        return MappingProxyType(self._locks)
 
     def clear_balance_history(self) -> None:
         """Clear the balance change history."""
@@ -403,12 +405,12 @@ class BalanceTracker:
             ... )
         """
         balance_changes: list[BalanceChange] = []
-        updated_assets: list[Asset] = []
+        updated_assets: set[Asset] = set()
         for asset, amount in new_balances:
             balance_changes.append(
                 self.set_balance(asset, amount, reason, balance_type)
             )
-            updated_assets.append(asset)
+            updated_assets.add(asset)
 
         if complete_update:
             balance_dict = (
@@ -416,7 +418,7 @@ class BalanceTracker:
                 if balance_type == BalanceType.TOTAL
                 else self._available_balances
             )
-            not_updated_assets = set(balance_dict.keys()) - set(updated_assets)
+            not_updated_assets = balance_dict.keys() - updated_assets
             for asset in not_updated_assets:
                 balance_changes.append(
                     self.set_balance(asset, s_decimal_0, reason, balance_type)

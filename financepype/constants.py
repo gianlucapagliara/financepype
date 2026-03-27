@@ -4,6 +4,8 @@ from decimal import Decimal
 from hashlib import md5
 
 s_decimal_0 = Decimal("0")
+s_decimal_100 = Decimal("100")
+s_decimal_1e_8 = Decimal("1e-8")
 s_decimal_max = Decimal("1e20")
 s_decimal_min = Decimal("1e-20")
 s_decimal_inf = Decimal("inf")

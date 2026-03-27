@@ -1,12 +1,11 @@
 import asyncio
-import math
 from decimal import Decimal
 from typing import Any
 from warnings import deprecated
 
 from pydantic import Field
 
-from financepype.constants import s_decimal_0
+from financepype.constants import s_decimal_0, s_decimal_1e_8
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.operation import Operation
 from financepype.operations.orders.models import (
@@ -137,23 +136,24 @@ class OrderOperation(Operation):
             OrderState.PENDING_CANCEL,
         }
 
+    def _is_fully_executed(self) -> bool:
+        """Check if the order is fully executed using Decimal arithmetic."""
+        return (self.amount - self.executed_amount_base).quantize(
+            s_decimal_1e_8
+        ) <= s_decimal_0
+
     @property
     def is_done(self) -> bool:
         return (
             self.current_state
             in {OrderState.CANCELED, OrderState.FILLED, OrderState.FAILED}
-            or math.isclose(self.executed_amount_base, self.amount)
-            or self.executed_amount_base >= self.amount
+            or self._is_fully_executed()
         )
 
     @property
     def is_filled(self) -> bool:
         return self.current_state == OrderState.FILLED or (
-            self.amount != s_decimal_0
-            and (
-                math.isclose(self.executed_amount_base, self.amount)
-                or self.executed_amount_base >= self.amount
-            )
+            self.amount != s_decimal_0 and self._is_fully_executed()
         )
 
     @property
@@ -243,10 +243,7 @@ class OrderOperation(Operation):
         self.last_update_timestamp = trade_update.fill_timestamp
 
         # Update state based on fill amount
-        if (
-            math.isclose(self.executed_amount_base, self.amount)
-            or self.executed_amount_base >= self.amount
-        ):
+        if self._is_fully_executed():
             self.current_state = OrderState.FILLED
 
         self.check_filled_condition()
@@ -266,9 +263,9 @@ class OrderOperation(Operation):
         return self.process_operation_update(trade_update)
 
     def check_filled_condition(self) -> None:
-        if (abs(self.amount) - self.executed_amount_base).quantize(
-            Decimal("1e-8")
-        ) <= 0:
+        if (self.amount - self.executed_amount_base).quantize(
+            s_decimal_1e_8
+        ) <= s_decimal_0:
             self.completely_filled_event.set()
 
     async def wait_until_completely_filled(self) -> None:

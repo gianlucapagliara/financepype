@@ -23,7 +23,7 @@ class TestBalanceTracker:
         assert balance_tracker.total_balances == {}
         assert balance_tracker.available_balances == {}
         assert balance_tracker.locks == {}
-        assert balance_tracker.balance_history == []
+        assert len(balance_tracker.balance_history) == 0
 
     def test_add_balance(
         self, balance_tracker: BalanceTracker, btc_asset: Asset

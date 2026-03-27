@@ -1,3 +1,4 @@
+import functools
 from collections import OrderedDict
 from datetime import datetime
 from decimal import Decimal
@@ -109,7 +110,7 @@ class MarketType(Enum):
         Returns:
             bool: True if spot trading instrument, False otherwise
         """
-        return self in [MarketType.SPOT]
+        return self in _SPOT_TYPES
 
     @property
     def is_derivative(self) -> bool:
@@ -118,7 +119,7 @@ class MarketType(Enum):
         Returns:
             bool: True if derivative instrument, False otherwise
         """
-        return not self.is_spot
+        return self not in _SPOT_TYPES
 
     @property
     def is_perpetual(self) -> bool:
@@ -127,11 +128,7 @@ class MarketType(Enum):
         Returns:
             bool: True if perpetual contract, False otherwise
         """
-        return self in [
-            MarketType.PERPETUAL,
-            MarketType.INVERSE_PERPETUAL,
-            MarketType.EQUITY,
-        ]
+        return self in _PERPETUAL_TYPES
 
     @property
     def is_future(self) -> bool:
@@ -140,10 +137,7 @@ class MarketType(Enum):
         Returns:
             bool: True if futures contract, False otherwise
         """
-        return self in [
-            MarketType.FUTURE,
-            MarketType.INVERSE_FUTURE,
-        ]
+        return self in _FUTURE_TYPES
 
     @property
     def is_option(self) -> bool:
@@ -152,15 +146,7 @@ class MarketType(Enum):
         Returns:
             bool: True if option contract, False otherwise
         """
-        return self in [
-            MarketType.CALL_OPTION,
-            MarketType.PUT_OPTION,
-            MarketType.INVERSE_CALL_OPTION,
-            MarketType.INVERSE_PUT_OPTION,
-            MarketType.CALL_SPREAD,
-            MarketType.PUT_SPREAD,
-            MarketType.VOLATILITY,
-        ]
+        return self in _OPTION_TYPES
 
     @property
     def is_inverse(self) -> bool:
@@ -169,12 +155,7 @@ class MarketType(Enum):
         Returns:
             bool: True if inverse contract, False otherwise
         """
-        return self in [
-            MarketType.INVERSE_FUTURE,
-            MarketType.INVERSE_PERPETUAL,
-            MarketType.INVERSE_CALL_OPTION,
-            MarketType.INVERSE_PUT_OPTION,
-        ]
+        return self in _INVERSE_TYPES
 
     @property
     def is_linear(self) -> bool:
@@ -183,15 +164,44 @@ class MarketType(Enum):
         Returns:
             bool: True if linear contract, False otherwise
         """
-        return self in [
-            MarketType.SPOT,
-            MarketType.FUTURE,
-            MarketType.PERPETUAL,
-            MarketType.EQUITY,
-            MarketType.CALL_OPTION,
-            MarketType.PUT_OPTION,
-            MarketType.VOLATILITY,
-        ]
+        return self in _LINEAR_TYPES
+
+
+_SPOT_TYPES = frozenset({MarketType.SPOT})
+_PERPETUAL_TYPES = frozenset(
+    {MarketType.PERPETUAL, MarketType.INVERSE_PERPETUAL, MarketType.EQUITY}
+)
+_FUTURE_TYPES = frozenset({MarketType.FUTURE, MarketType.INVERSE_FUTURE})
+_OPTION_TYPES = frozenset(
+    {
+        MarketType.CALL_OPTION,
+        MarketType.PUT_OPTION,
+        MarketType.INVERSE_CALL_OPTION,
+        MarketType.INVERSE_PUT_OPTION,
+        MarketType.CALL_SPREAD,
+        MarketType.PUT_SPREAD,
+        MarketType.VOLATILITY,
+    }
+)
+_INVERSE_TYPES = frozenset(
+    {
+        MarketType.INVERSE_FUTURE,
+        MarketType.INVERSE_PERPETUAL,
+        MarketType.INVERSE_CALL_OPTION,
+        MarketType.INVERSE_PUT_OPTION,
+    }
+)
+_LINEAR_TYPES = frozenset(
+    {
+        MarketType.SPOT,
+        MarketType.FUTURE,
+        MarketType.PERPETUAL,
+        MarketType.EQUITY,
+        MarketType.CALL_OPTION,
+        MarketType.PUT_OPTION,
+        MarketType.VOLATILITY,
+    }
+)
 
 
 class MarketInfo(BaseModel):
@@ -271,7 +281,7 @@ class MarketInfo(BaseModel):
     def is_inverse(self) -> bool:
         return self.market_type.is_inverse
 
-    @property
+    @functools.cached_property
     def client_name(self) -> str:
         if self.is_spot:
             return f"{self.base}-{self.quote}"
