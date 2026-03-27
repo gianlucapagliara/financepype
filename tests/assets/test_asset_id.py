@@ -1,5 +1,4 @@
 import pytest
-from pydantic import ValidationError
 
 from financepype.assets.asset_id import AssetIdentifier
 
@@ -12,8 +11,8 @@ def test_asset_identifier_creation() -> None:
 
 def test_asset_identifier_immutability() -> None:
     identifier = AssetIdentifier(value="BTC")
-    with pytest.raises(ValidationError):
-        identifier.value = "ETH"
+    with pytest.raises(AttributeError):
+        identifier.value = "ETH"  # type: ignore[misc]
 
 
 def test_asset_identifier_equality() -> None:

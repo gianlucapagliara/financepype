@@ -1,7 +1,7 @@
-from pydantic import BaseModel, ConfigDict
+from typing import NamedTuple
 
 
-class AssetIdentifier(BaseModel):
+class AssetIdentifier(NamedTuple):
     """An immutable identifier for assets in the trading system.
 
     This class provides a standardized way to identify assets across different
@@ -18,8 +18,6 @@ class AssetIdentifier(BaseModel):
         >>> asset_map = {btc_id: "Bitcoin"}  # Can be used as dict key
     """
 
-    model_config = ConfigDict(frozen=True)
-
     value: str
 
     def __str__(self) -> str:
@@ -30,26 +28,10 @@ class AssetIdentifier(BaseModel):
         """
         return self.value
 
-    def __eq__(self, other: object) -> bool:
-        """Compare this identifier with another for equality.
-
-        Args:
-            other: The object to compare with
+    def __repr__(self) -> str:
+        """Get the detailed string representation of the asset identifier.
 
         Returns:
-            bool: True if the other object is an AssetIdentifier with the same value
+            str: Detailed representation including class name and value
         """
-        if not isinstance(other, AssetIdentifier):
-            return False
-        return self.value == other.value
-
-    def __hash__(self) -> int:
-        """Get the hash value of the identifier.
-
-        The hash is based on the identifier value to ensure consistency
-        with equality comparison.
-
-        Returns:
-            int: Hash value of the identifier
-        """
-        return hash(self.value)
+        return f"AssetIdentifier(value={self.value})"

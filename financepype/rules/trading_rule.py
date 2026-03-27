@@ -447,8 +447,5 @@ class DerivativeTradingRule(TradingRule):
         Returns:
             bool: True if trading is active
         """
-        return (
-            self.is_live
-            and self.is_started(timestamp)
-            and not self.is_expired(timestamp)
-        )
+        ts = timestamp if timestamp is not None else datetime.now().timestamp()
+        return self.is_live and self.is_started(ts) and not self.is_expired(ts)

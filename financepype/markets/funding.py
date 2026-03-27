@@ -1,5 +1,6 @@
 import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 
@@ -19,7 +20,8 @@ class FundingPaymentType(Enum):
     LAST = "LAST"
 
 
-class FundingInfoUpdate(BaseModel):
+@dataclass(slots=True)
+class FundingInfoUpdate:
     """Update information for funding rates and prices.
 
     This class represents an update to funding-related information for a perpetual
@@ -141,20 +143,22 @@ class FundingInfo(BaseModel):
         Args:
             info_update (FundingInfoUpdate): New funding information
         """
-        update_dict = info_update.model_dump(exclude_unset=True)
-        update_dict.pop("trading_pair", None)
-        for key, value in update_dict.items():
-            if value is not None:
-                if key == "next_funding_utc_timestamp":
-                    if (
-                        value is not None
-                        and self.next_funding_utc_timestamp is not None
-                        and value > self.next_funding_utc_timestamp
-                    ):
-                        self.last_funding_utc_timestamp = (
-                            self.next_funding_utc_timestamp
-                        )
-                setattr(self, key, value)
+        if info_update.index_price is not None:
+            self.index_price = info_update.index_price
+        if info_update.mark_price is not None:
+            self.mark_price = info_update.mark_price
+        if info_update.next_funding_utc_timestamp is not None:
+            if (
+                self.next_funding_utc_timestamp is not None
+                and info_update.next_funding_utc_timestamp
+                > self.next_funding_utc_timestamp
+            ):
+                self.last_funding_utc_timestamp = self.next_funding_utc_timestamp
+            self.next_funding_utc_timestamp = info_update.next_funding_utc_timestamp
+        if info_update.next_funding_rate is not None:
+            self.next_funding_rate = info_update.next_funding_rate
+        if info_update.last_funding_rate is not None:
+            self.last_funding_rate = info_update.last_funding_rate
 
     def get_next_payment_rates(
         self,

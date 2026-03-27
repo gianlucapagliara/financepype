@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from decimal import Decimal
 from enum import Enum
-from functools import total_ordering
+from functools import cached_property, total_ordering
 
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.orders.models import TradeType
@@ -128,14 +128,14 @@ class OrderBookUpdateMessage(BaseOrderBookMessage):
         if self.type == OrderBookMessageType.DIFF and self.first_update_id == -1:
             self.first_update_id = self.update_id
 
-    @property
+    @cached_property
     def asks(self) -> list[OrderBookRow]:
         return [
             OrderBookRow(float(price), float(amount), self.update_id)
             for price, amount, *_ in self.raw_asks
         ]
 
-    @property
+    @cached_property
     def bids(self) -> list[OrderBookRow]:
         return [
             OrderBookRow(float(price), float(amount), self.update_id)
