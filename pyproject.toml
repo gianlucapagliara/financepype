@@ -1,6 +1,6 @@
 [project]
 name = "financepype"
-version = "0.2.3"
+version = "0.2.4"
 description = "FinancePype is a Python library for trading on centralized and decentralized exchanges."
 authors = [{ name = "Gianluca Pagliara", email = "pagliara.gianluca@gmail.com" }]
 readme = "README.md"
