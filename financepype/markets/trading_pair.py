@@ -26,6 +26,7 @@ class TradingPair(BaseModel):
 
     name: str
     _instances: ClassVar[dict[str, "TradingPair"]] = {}
+    _market_info_cache: ClassVar[dict[str, MarketInfo]] = {}
 
     def __new__(cls, **data: Any) -> "TradingPair":
         """Create or retrieve a TradingPair instance.
@@ -110,7 +111,11 @@ class TradingPair(BaseModel):
         Returns:
             InstrumentInfo: Object containing parsed instrument details
         """
-        return MarketInfo.split_client_instrument_name(self.name)
+        if self.name not in self._market_info_cache:
+            self._market_info_cache[self.name] = (
+                MarketInfo.split_client_instrument_name(self.name)
+            )
+        return self._market_info_cache[self.name]
 
     @property
     @deprecated("Use market_info instead")

@@ -50,11 +50,10 @@ Example:
     >>> tracker.lock_balance(lock)
 """
 
+from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
-
-from pydantic import BaseModel, Field
 
 from financepype.assets.asset import Asset
 from financepype.assets.contract import DerivativeContract
@@ -89,19 +88,20 @@ class BalanceUpdateType(Enum):
     SIMULATED = "simulated"
 
 
-class BalanceChange(BaseModel):
+@dataclass(slots=True)
+class BalanceChange:
     """Record of a change in asset balance.
 
     This class represents a single change in an asset's balance, including
     metadata about when and why the change occurred.
 
     Attributes:
-        timestamp (datetime): When the change occurred
         asset (Asset): The asset whose balance changed
         amount (Decimal): Amount of the change
         reason (str): Description of why the change occurred
         balance_type (BalanceType): Type of balance affected
         update_type (BalanceUpdateType): How the balance was updated
+        timestamp (datetime): When the change occurred
 
     Example:
         >>> change = BalanceChange(
@@ -113,15 +113,12 @@ class BalanceChange(BaseModel):
         ... )
     """
 
-    timestamp: datetime = Field(
-        default_factory=datetime.now,
-        description="When the change occurred",
-    )
-    asset: Asset = Field(description="The asset whose balance changed")
-    amount: Decimal = Field(description="Amount of the change")
-    reason: str = Field(description="Description of why the change occurred")
-    balance_type: BalanceType = Field(description="Type of balance affected")
-    update_type: BalanceUpdateType = Field(description="How the balance was updated")
+    asset: Asset
+    amount: Decimal
+    reason: str
+    balance_type: BalanceType
+    update_type: BalanceUpdateType
+    timestamp: datetime = field(default_factory=datetime.now)
 
 
 class BalanceTracker:

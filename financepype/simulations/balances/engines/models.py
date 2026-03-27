@@ -37,7 +37,9 @@ Example:
     ... )
 """
 
+import functools
 import time
+from dataclasses import dataclass
 from decimal import Decimal
 from enum import Enum
 from typing import Any, Self, cast
@@ -106,7 +108,8 @@ class CashflowType(Enum):
     INFLOW = "inflow"
 
 
-class AssetCashflow(BaseModel):
+@dataclass(slots=True)
+class AssetCashflow:
     """Model for a single asset movement in a trading operation.
 
     This class represents one asset flow (in or out) during a trading operation,
@@ -130,26 +133,17 @@ class AssetCashflow(BaseModel):
         >>> print(flow.cashflow_amount)  # -1.0 (negative for outflow)
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    asset: Asset
+    involvement_type: InvolvementType
+    cashflow_type: CashflowType
+    reason: CashflowReason
+    amount: Decimal = Decimal(0)
 
-    asset: Asset = Field(description="The asset being moved")
-    involvement_type: InvolvementType = Field(description="When the flow occurs")
-    cashflow_type: CashflowType = Field(description="Direction of the flow")
-    reason: CashflowReason = Field(description="Purpose of the flow")
-    amount: Decimal = Field(
-        default=Decimal(0),
-        allow_inf_nan=True,
-        description="Amount of the asset (always positive)",
-    )
-
-    @field_validator("amount")
-    def validate_amount(cls, value: Decimal) -> Decimal:
-        """Validate the amount of the asset."""
-        if value.is_nan():
-            return s_decimal_NaN
-        if value < s_decimal_0:
+    def __post_init__(self) -> None:
+        if self.amount.is_nan():
+            object.__setattr__(self, "amount", s_decimal_NaN)
+        elif self.amount < s_decimal_0:
             raise ValueError("Amount must be positive or Inf/NaN")
-        return value
 
     @property
     def is_outflow(self) -> bool:
@@ -195,17 +189,13 @@ class MinimalOrderDetails(BaseModel):
         if self.position_action != PositionAction.FLIP:
             return [self]
 
-        close_order = self.model_copy(
-            update={
-                "position_action": PositionAction.CLOSE,
-            }
-        )
-        open_order = self.model_copy(
-            update={
-                "position_action": PositionAction.OPEN,
-            }
-        )
-        return [close_order, open_order]
+        fields = dict(self)
+        close_fields = {**fields, "position_action": PositionAction.CLOSE}
+        open_fields = {**fields, "position_action": PositionAction.OPEN}
+        return [
+            type(self).model_construct(**close_fields),
+            type(self).model_construct(**open_fields),
+        ]
 
 
 class OrderDetails(MinimalOrderDetails):
@@ -431,15 +421,18 @@ class OrderDetails(MinimalOrderDetails):
         if self.position_action != PositionAction.FLIP:
             return [self]
 
-        close_order = self.model_copy(
-            update={
+        fields = dict(self)
+        close_order = type(self).model_construct(
+            **{
+                **fields,
                 "amount": cast(Position, self.current_position).amount,
                 "position_action": PositionAction.CLOSE,
             }
         )
-        open_order = self.model_copy(
-            update={
-                "amount": self.amount - close_order.amount,
+        open_order = type(self).model_construct(
+            **{
+                **fields,
+                "amount": self.amount - cast(Position, self.current_position).amount,
                 "position_action": PositionAction.OPEN,
                 "current_position": None,
             }
@@ -541,7 +534,8 @@ class FundingOrderDetails(BaseModel):
     fee: OperationFee = Field(description="Fee structure for the operation")
 
 
-class OperationSimulationResult(BaseModel):
+@dataclass
+class OperationSimulationResult:
     """Results of simulating a trading operation.
 
     This class contains the complete results of simulating a trading operation,
@@ -562,14 +556,10 @@ class OperationSimulationResult(BaseModel):
         >>> print(result.opening_outflows)  # {Asset("BTC"): Decimal("-1.0")}
     """
 
-    operation_details: BaseModel = Field(
-        description="Details of the simulated operation"
-    )
-    cashflows: list[AssetCashflow] = Field(
-        description="All cashflows in the operation",
-    )
+    operation_details: Any
+    cashflows: list[AssetCashflow]
 
-    @property
+    @functools.cached_property
     def opening_cashflow(self) -> dict[Asset, Decimal]:
         """Net cashflow at position opening for each asset."""
         cashflows: dict[Asset, Decimal] = {}
@@ -581,7 +571,7 @@ class OperationSimulationResult(BaseModel):
             )
         return cashflows
 
-    @property
+    @functools.cached_property
     def opening_outflows(self) -> dict[Asset, Decimal]:
         """Assets leaving the account at position opening."""
         cashflows: dict[Asset, Decimal] = {}
@@ -596,7 +586,7 @@ class OperationSimulationResult(BaseModel):
             )
         return cashflows
 
-    @property
+    @functools.cached_property
     def opening_inflows(self) -> dict[Asset, Decimal]:
         """Assets entering the account at position opening."""
         cashflows: dict[Asset, Decimal] = {}
@@ -611,7 +601,7 @@ class OperationSimulationResult(BaseModel):
             )
         return cashflows
 
-    @property
+    @functools.cached_property
     def closing_cashflow(self) -> dict[Asset, Decimal]:
         """Net cashflow at position closing for each asset."""
         cashflows: dict[Asset, Decimal] = {}
@@ -623,7 +613,7 @@ class OperationSimulationResult(BaseModel):
             )
         return cashflows
 
-    @property
+    @functools.cached_property
     def closing_outflows(self) -> dict[Asset, Decimal]:
         """Assets leaving the account at position closing."""
         cashflows: dict[Asset, Decimal] = {}
@@ -638,7 +628,7 @@ class OperationSimulationResult(BaseModel):
             )
         return cashflows
 
-    @property
+    @functools.cached_property
     def closing_inflows(self) -> dict[Asset, Decimal]:
         """Assets entering the account at position closing."""
         cashflows: dict[Asset, Decimal] = {}
