@@ -93,7 +93,7 @@ class OrderTracker(OperationTracker):
                 and not tracked_order.is_done
                 and not force_update
             ):
-                asyncio.ensure_future(
+                asyncio.get_running_loop().create_task(
                     self._wait_fills_to_process_order_update(
                         tracked_order,
                         order_update,

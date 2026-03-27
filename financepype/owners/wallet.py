@@ -167,8 +167,12 @@ class BlockchainWallet(Owner):
         old_assets = self._tracked_assets.copy()
         self._tracked_assets = self._tracked_assets.union(assets)
 
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            return
         for asset in self._tracked_assets - old_assets:
-            asyncio.ensure_future(self.update_balance(asset))
+            loop.create_task(self.update_balance(asset))
 
     def remove_tracked_assets(self, assets: Iterable[BlockchainAsset]) -> None:
         """Remove tracked assets.
@@ -273,7 +277,7 @@ class BlockchainWallet(Owner):
         self._pending_transaction_update.add(transaction.client_operation_id)
 
         async def _wait_tx_and_update_balances(
-            wallet: "BlockchainWallet",
+            wallet: BlockchainWallet,
             transaction: BlockchainTransaction,
             wait_timeout: timedelta,
         ) -> None:
@@ -288,7 +292,7 @@ class BlockchainWallet(Owner):
                 )
                 await wallet.update_all_balances()
 
-        asyncio.ensure_future(
+        asyncio.get_running_loop().create_task(
             _wait_tx_and_update_balances(self, transaction, wait_timeout)
         )
 

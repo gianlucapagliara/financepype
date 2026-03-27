@@ -311,7 +311,7 @@ wheels = [
 
 [[package]]
 name = "financepype"
-version = "0.2.1"
+version = "0.2.3"
 source = { editable = "." }
 dependencies = [
     { name = "bidict" },
@@ -348,7 +348,7 @@ requires-dist = [
     { name = "chronopype", specifier = ">=0.7.3,<1" },
     { name = "eventspype", specifier = ">=1.1.0,<2" },
     { name = "pandas", specifier = ">=2.2.1,<3" },
-    { name = "pydantic", specifier = ">=2.10.4,<3" },
+    { name = "pydantic", specifier = ">=2.12,<3" },
     { name = "sortedcontainers", specifier = ">=2.4.0,<3" },
     { name = "streamlit", specifier = ">=1.32.0,<2" },
     { name = "types-cachetools", specifier = ">=4.2.10,<5" },

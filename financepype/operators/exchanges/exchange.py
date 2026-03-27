@@ -390,7 +390,7 @@ class Exchange(Operator):
             order_details,
         )
 
-        asyncio.ensure_future(
+        asyncio.get_running_loop().create_task(
             self._request_create_order(
                 account=account,
                 client_order_id=client_order_id,
@@ -485,7 +485,7 @@ class Exchange(Operator):
     # === Cancel Functions ===
 
     def cancel(self, account: Owner, order_id: str) -> None:
-        asyncio.ensure_future(self._execute_cancel(account, order_id))
+        asyncio.get_running_loop().create_task(self._execute_cancel(account, order_id))
 
     async def _execute_cancel(self, account: Owner, order_id: str) -> None:
         tracked_order = self.get_tracked_order(account, order_id)
@@ -533,7 +533,9 @@ class Exchange(Operator):
         raise NotImplementedError
 
     def cancel_batch(self, account: Owner, order_ids: list[str]) -> None:
-        asyncio.ensure_future(self._place_batch_cancel(account, order_ids))
+        asyncio.get_running_loop().create_task(
+            self._place_batch_cancel(account, order_ids)
+        )
 
     async def _place_batch_cancel(self, account: Owner, order_ids: list[str]) -> None:
         tasks = [self._execute_cancel(account, order_id) for order_id in order_ids]

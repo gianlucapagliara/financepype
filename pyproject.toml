@@ -1,6 +1,6 @@
 [project]
 name = "financepype"
-version = "0.2.2"
+version = "0.2.3"
 description = "FinancePype is a Python library for trading on centralized and decentralized exchanges."
 authors = [{ name = "Gianluca Pagliara", email = "pagliara.gianluca@gmail.com" }]
 readme = "README.md"
@@ -18,7 +18,7 @@ classifiers = [
     "Framework :: AsyncIO",
 ]
 dependencies = [
-    "pydantic>=2.10.4,<3",
+    "pydantic>=2.12,<3",
     "cachetools>=4.2.2,<5",
     "types-cachetools>=4.2.10,<5",
     "boto3>=1.35.90,<2",
@@ -55,7 +55,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
@@ -68,7 +68,7 @@ exclude = ["tests/.*"]
 
 [tool.ruff]
 line-length = 88
-target-version = "py313"
+target-version = "py314"
 
 [tool.ruff.lint]
 select = [
