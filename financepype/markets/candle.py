@@ -1,8 +1,9 @@
-from dataclasses import dataclass
 from datetime import datetime, timedelta
 from decimal import Decimal
 from enum import Enum
 from typing import cast
+
+from pydantic import BaseModel, ConfigDict
 
 from financepype.constants import s_decimal_0
 
@@ -56,8 +57,7 @@ class CandleType(Enum):
     ACCRUED_FUNDING = "ACCRUED_FUNDING"
 
 
-@dataclass(slots=True)
-class Candle:
+class Candle(BaseModel):
     """Represents a single candlestick in a financial chart.
 
     A candle represents price movement over a specific time period, including
@@ -73,6 +73,8 @@ class Candle:
         low (Decimal): Lowest price during the period
         volume (Decimal | None): Trading volume during the period, if available
     """
+
+    model_config = ConfigDict(frozen=True)
 
     start_time: datetime
     end_time: datetime

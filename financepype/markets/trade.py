@@ -1,13 +1,13 @@
-from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal
+
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from financepype.markets.trading_pair import TradingPair
 from financepype.operations.orders.models import TradeType
 
 
-@dataclass(frozen=True, slots=True)
-class PublicTrade:
+class PublicTrade(BaseModel):
     """Represents a public trade executed on an exchange.
 
     This class models individual trades that occur on an exchange and are visible
@@ -24,7 +24,9 @@ class PublicTrade:
         is_liquidation (bool): Whether this was a liquidation trade
     """
 
-    trade_id: str
+    model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
+
+    trade_id: str = Field(..., min_length=1)
     trading_pair: TradingPair
     price: Decimal
     amount: Decimal
@@ -32,8 +34,10 @@ class PublicTrade:
     time: datetime
     is_liquidation: bool
 
-    def __post_init__(self) -> None:
+    @model_validator(mode="after")
+    def validate_positive_values(self) -> "PublicTrade":
         if self.price <= Decimal("0"):
             raise ValueError("Price must be greater than zero")
         if self.amount <= Decimal("0"):
             raise ValueError("Amount must be greater than zero")
+        return self

@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 import pytest
+from pydantic import ValidationError
 
 from financepype.assets.asset_id import AssetIdentifier
 from financepype.assets.contract import DerivativeContract, DerivativeSide
@@ -78,6 +79,60 @@ def test_position_initialization(long_contract: DerivativeContract) -> None:
     assert position.margin == Decimal("1000")
     assert position.unrealized_pnl == Decimal("0")
     assert position.liquidation_price == Decimal("45000")
+
+
+def test_position_validation(long_contract: DerivativeContract) -> None:
+    # Test amount > 0
+    with pytest.raises(ValidationError):
+        Position(
+            asset=long_contract,
+            amount=Decimal("0"),
+            leverage=Decimal("2"),
+            entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
+            margin=Decimal("1000"),
+            unrealized_pnl=Decimal("0"),
+            liquidation_price=Decimal("45000"),
+        )
+
+    # Test leverage > 0
+    with pytest.raises(ValidationError):
+        Position(
+            asset=long_contract,
+            amount=Decimal("0.1"),
+            leverage=Decimal("0"),
+            entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
+            margin=Decimal("1000"),
+            unrealized_pnl=Decimal("0"),
+            liquidation_price=Decimal("45000"),
+        )
+
+    # Test entry_price > 0
+    with pytest.raises(ValidationError):
+        Position(
+            asset=long_contract,
+            amount=Decimal("0.1"),
+            leverage=Decimal("2"),
+            entry_price=Decimal("0"),
+            entry_index_price=Decimal("50000"),
+            margin=Decimal("1000"),
+            unrealized_pnl=Decimal("0"),
+            liquidation_price=Decimal("45000"),
+        )
+
+    # Test margin >= 0
+    with pytest.raises(ValidationError):
+        Position(
+            asset=long_contract,
+            amount=Decimal("0.1"),
+            leverage=Decimal("2"),
+            entry_price=Decimal("50000"),
+            entry_index_price=Decimal("50000"),
+            margin=Decimal("-1"),
+            unrealized_pnl=Decimal("0"),
+            liquidation_price=Decimal("45000"),
+        )
 
 
 def test_liquidation_price_validation(long_contract: DerivativeContract) -> None:
@@ -369,15 +424,24 @@ def test_liquidation_risk_edge_cases(long_contract: DerivativeContract) -> None:
 
 
 def test_model_validation(long_contract: DerivativeContract) -> None:
-    # Dataclass accepts values without validation; negative liquidation_price is normalized to 0
-    position = Position(
-        asset=long_contract,
-        amount=Decimal("-0.1"),
-        leverage=Decimal("-2"),
-        entry_price=Decimal("-50000"),
-        entry_index_price=Decimal("50000"),
-        margin=Decimal("-1000"),
-        unrealized_pnl=Decimal("0"),
-        liquidation_price=Decimal("-45000"),  # Will be converted to 0
-    )
-    assert position.liquidation_price == s_decimal_0
+    # Test model-level validation
+    with pytest.raises(ValidationError) as exc_info:
+        Position(
+            asset=long_contract,
+            amount=Decimal("-0.1"),  # Invalid: negative amount
+            leverage=Decimal("-2"),  # Invalid: negative leverage
+            entry_price=Decimal("-50000"),  # Invalid: negative entry price
+            entry_index_price=Decimal("50000"),
+            margin=Decimal("-1000"),  # Invalid: negative margin
+            unrealized_pnl=Decimal("0"),
+            liquidation_price=Decimal("-45000"),  # Will be converted to 0
+        )
+
+    errors = exc_info.value.errors()
+    error_fields = {error["loc"][0] for error in errors}
+    assert error_fields == {
+        "amount",
+        "leverage",
+        "entry_price",
+        "margin",
+    }  # All invalid fields should be caught

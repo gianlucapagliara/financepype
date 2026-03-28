@@ -1,7 +1,7 @@
-from typing import NamedTuple
+from pydantic import BaseModel, ConfigDict
 
 
-class AssetIdentifier(NamedTuple):
+class AssetIdentifier(BaseModel):
     """An immutable identifier for assets in the trading system.
 
     This class provides a standardized way to identify assets across different
@@ -17,6 +17,8 @@ class AssetIdentifier(NamedTuple):
         >>> assert btc_id != usdt_id
         >>> asset_map = {btc_id: "Bitcoin"}  # Can be used as dict key
     """
+
+    model_config = ConfigDict(frozen=True)
 
     value: str
 
@@ -35,3 +37,11 @@ class AssetIdentifier(NamedTuple):
             str: Detailed representation including class name and value
         """
         return f"AssetIdentifier(value={self.value})"
+
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, AssetIdentifier):
+            return self.value == other.value
+        return NotImplemented
+
+    def __hash__(self) -> int:
+        return hash(self.value)

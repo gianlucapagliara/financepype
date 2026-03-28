@@ -1,12 +1,12 @@
-from dataclasses import dataclass, field
 from decimal import Decimal
+
+from pydantic import BaseModel, Field, field_validator
 
 from financepype.assets.contract import DerivativeContract, DerivativeSide
 from financepype.constants import s_decimal_0, s_decimal_inf
 
 
-@dataclass(slots=True)
-class Position:
+class Position(BaseModel):
     """Represents a derivative trading position.
 
     This class models an open position in a derivative market, including its size,
@@ -24,17 +24,25 @@ class Position:
     """
 
     asset: DerivativeContract
-    amount: Decimal
-    leverage: Decimal
-    entry_price: Decimal
-    margin: Decimal
-    entry_index_price: Decimal = field(default_factory=lambda: Decimal(0))
-    unrealized_pnl: Decimal = field(default_factory=lambda: Decimal(0))
-    liquidation_price: Decimal = field(default_factory=lambda: Decimal(0))
+    amount: Decimal = Field(gt=s_decimal_0)
+    leverage: Decimal = Field(gt=s_decimal_0)
+    entry_price: Decimal = Field(gt=s_decimal_0)
+    entry_index_price: Decimal = Field(gt=s_decimal_0)
+    margin: Decimal = Field(ge=s_decimal_0)
+    unrealized_pnl: Decimal = Field(allow_inf_nan=True)
+    liquidation_price: Decimal = Field(ge=s_decimal_0)
 
-    def __post_init__(self) -> None:
-        if self.liquidation_price <= s_decimal_0:
-            self.liquidation_price = s_decimal_0
+    @field_validator("liquidation_price", mode="before")
+    def validate_liquidation_price(cls, v: Decimal) -> Decimal:
+        """Validate and normalize the liquidation price.
+
+        Args:
+            v (Decimal): The liquidation price to validate
+
+        Returns:
+            Decimal: Validated liquidation price, minimum 0
+        """
+        return v if v > s_decimal_0 else s_decimal_0
 
     @property
     def unrealized_percentage_pnl(self) -> Decimal:
