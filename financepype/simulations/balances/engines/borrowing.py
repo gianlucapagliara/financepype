@@ -9,8 +9,12 @@ from financepype.simulations.balances.engines.models import (
     BorrowOrderDetails,
     CashflowReason,
     CashflowType,
+    InterestSettlementDetails,
     InvolvementType,
 )
+from financepype.simulations.balances.engines.settlement import SettlementEngine
+
+SECONDS_PER_YEAR = Decimal("31536000")  # 365 * 24 * 60 * 60
 
 
 class BorrowBalanceEngine(BalanceEngine):
@@ -39,10 +43,19 @@ class BorrowBalanceEngine(BalanceEngine):
     def _calculate_interest(cls, order_details: BorrowOrderDetails) -> Decimal:
         """Calculate accrued interest for the borrow period.
 
-        Default: ``amount * interest_rate / 100``.
-        Override in subclasses to incorporate a real duration.
+        When ``borrow_duration`` is set (> 0), computes time-proportional
+        interest: ``amount * (rate / 100) * (duration / SECONDS_PER_YEAR)``.
+        Otherwise falls back to: ``amount * interest_rate / 100``
+        (treating interest_rate as the total rate for the period).
         """
-        return order_details.amount * (order_details.interest_rate / Decimal("100"))
+        rate = order_details.interest_rate / Decimal("100")
+        if order_details.borrow_duration > 0:
+            return (
+                order_details.amount
+                * rate
+                * (Decimal(order_details.borrow_duration) / SECONDS_PER_YEAR)
+            )
+        return order_details.amount * rate
 
     @classmethod
     def _calculate_fee_amount(cls, order_details: BorrowOrderDetails) -> Decimal:
@@ -224,5 +237,65 @@ class BorrowBalanceEngine(BalanceEngine):
                     amount=order_details.collateral_amount,
                 )
             )
+
+        return result
+
+
+class InterestSettlementEngine(SettlementEngine):
+    """Settlement engine for a single interest accrual event.
+
+    Primary interface for backtesting. Computes interest for one period
+    given the current principal and rate.
+    """
+
+    @classmethod
+    def _calculate_interest(cls, details: InterestSettlementDetails) -> Decimal:
+        rate = details.rate / Decimal("100")
+        return (
+            details.principal
+            * rate
+            * (Decimal(details.duration_seconds) / SECONDS_PER_YEAR)
+        )
+
+    @classmethod
+    def _calculate_fee(cls, details: InterestSettlementDetails) -> Decimal:
+        if details.fee.fee_type == FeeType.ABSOLUTE:
+            return details.fee.amount
+        if details.fee.fee_type == FeeType.PERCENTAGE:
+            return details.principal * (details.fee.amount / Decimal("100"))
+        raise ValueError(f"Unsupported fee type: {details.fee.fee_type}")
+
+    @classmethod
+    def compute_settlement(
+        cls, details: InterestSettlementDetails
+    ) -> list[AssetCashflow]:
+        result: list[AssetCashflow] = []
+        interest = cls._calculate_interest(details)
+
+        if interest > s_decimal_0:
+            result.append(
+                AssetCashflow(
+                    asset=details.borrowed_asset,
+                    involvement_type=InvolvementType.SETTLEMENT,
+                    cashflow_type=CashflowType.OUTFLOW,
+                    reason=CashflowReason.INTEREST,
+                    amount=interest,
+                    timestamp=details.timestamp,
+                )
+            )
+
+        if details.fee.amount > s_decimal_0:
+            fee_amount = cls._calculate_fee(details)
+            if fee_amount > s_decimal_0:
+                result.append(
+                    AssetCashflow(
+                        asset=details.borrowed_asset,
+                        involvement_type=InvolvementType.SETTLEMENT,
+                        cashflow_type=CashflowType.OUTFLOW,
+                        reason=CashflowReason.FEE,
+                        amount=fee_amount,
+                        timestamp=details.timestamp,
+                    )
+                )
 
         return result
