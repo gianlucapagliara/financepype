@@ -443,13 +443,23 @@ class OrderDetails(MinimalOrderDetails):
 class StakingOrderDetails(BaseModel):
     """Details for a staking operation simulation.
 
+    Supports both traditional staking and liquid staking (BETH, stETH, BBSOL).
+    For liquid staking, set ``receipt_asset`` to the derivative token received
+    on stake (e.g. BETH for ETH staking on Binance).
+
+    Fee handling:
+    - ADDED_TO_COSTS: entry fee on principal (liquid staking minting fees)
+    - DEDUCTED_FROM_RETURNS: exit fee on accrued rewards (protocol commissions)
+
     Attributes:
         platform: Trading platform
-        staked_asset: The asset being staked
+        staked_asset: The asset being staked (e.g. ETH, SOL)
         reward_asset: The asset in which rewards are paid
+        receipt_asset: Liquid staking derivative received on stake (e.g. BETH,
+            stETH, BBSOL). None for traditional locked staking.
         amount: Amount being staked
         reward_rate: Annual reward rate (percentage, APY)
-        lock_period: Lock period in seconds (0 for no lock)
+        staking_duration: Duration in seconds for reward accrual
         position_action: Opening or closing the staking position
         current_position: Current position (required for closing)
         fee: Fee structure for the operation
@@ -460,11 +470,14 @@ class StakingOrderDetails(BaseModel):
     platform: Platform = Field(description="Trading platform")
     staked_asset: Asset = Field(description="The asset being staked")
     reward_asset: Asset = Field(description="The asset in which rewards are paid")
+    receipt_asset: Asset | None = Field(
+        default=None,
+        description="Liquid staking derivative token (e.g. BETH, stETH, BBSOL). "
+        "None for traditional locked staking.",
+    )
     amount: Decimal = Field(description="Amount being staked")
     reward_rate: Decimal = Field(description="Annual reward rate (percentage, APY)")
-    lock_period: int = Field(
-        default=0, description="Lock period in seconds (0 for no lock)"
-    )
+    staking_duration: int = Field(description="Duration in seconds for reward accrual")
     position_action: PositionAction = Field(
         description="Opening or closing the position"
     )
