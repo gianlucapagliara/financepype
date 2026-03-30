@@ -19,8 +19,8 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.12,<3",
-    "cachetools>=4.2.2,<5",
-    "types-cachetools>=4.2.10,<5",
+    "cachetools>=5.0,<8",
+    "types-cachetools>=5.0,<8",
     "boto3>=1.35.90,<2",
     "eventspype>=1.1.0,<2",
     "streamlit>=1.32.0,<2",
