@@ -181,11 +181,11 @@ Simulates cashflows for one type of trading operation.
 
 ### InvolvementType
 
-`OPENING`, `CLOSING`
+`OPENING`, `CLOSING`, `SETTLEMENT`
 
 ### CashflowReason
 
-`OPERATION`, `FEE`, `PNL`, `FUNDING`, `INTEREST`, `REWARD`
+`OPERATION`, `FEE`, `PNL`, `FUNDING`, `INTEREST`, `REWARD`, `MARGIN`, `COLLATERAL`
 
 ### AssetCashflow
 
@@ -194,10 +194,12 @@ Represents one leg of a cashflow.
 | Field | Type | Description |
 |-------|------|-------------|
 | `asset` | `Asset` | Asset flowing |
-| `involvement_type` | `InvolvementType` | At opening or closing |
+| `involvement_type` | `InvolvementType` | At opening, closing, or settlement |
 | `cashflow_type` | `CashflowType` | In or out |
 | `reason` | `CashflowReason` | Why this flow exists |
 | `amount` | `Decimal \| None` | Amount (None = involvement only) |
+| `period_index` | `int \| None` | Period index for multi-period simulations |
+| `timestamp` | `int \| None` | Timestamp for settlement events |
 
 ### OperationSimulationResult
 
@@ -208,28 +210,54 @@ Represents one leg of a cashflow.
 
 **Properties**
 
-- `opening_outflows -> list[AssetCashflow]`
-- `opening_inflows -> list[AssetCashflow]`
-- `closing_outflows -> list[AssetCashflow]`
-- `closing_inflows -> list[AssetCashflow]`
+- `opening_outflows -> dict[Asset, Decimal]`
+- `opening_inflows -> dict[Asset, Decimal]`
+- `closing_outflows -> dict[Asset, Decimal]`
+- `closing_inflows -> dict[Asset, Decimal]`
+
+### PeriodicSimulationResult
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `operation_details` | `Any` | Base operation details |
+| `period_results` | `list[OperationSimulationResult]` | Per-period results |
+
+**Properties**
+
+- `total_cashflows -> list[AssetCashflow]`
+- `total_by_asset -> dict[Asset, Decimal]`
+
+**Methods**
+
+- `cashflows_at(timestamp: int) -> list[AssetCashflow]`
+- `cashflows_in_range(start: int, end: int) -> list[AssetCashflow]`
 
 ---
 
 ## Engine Reference
 
-| Engine Module | Class | Market Type |
-|---------------|-------|-------------|
-| `engines.spot` | `SpotBalanceEngine` | Spot |
-| `engines.perpetual` | `PerpetualBalanceEngine` | Perpetual |
+### Lifecycle Engines (BalanceEngine)
+
+| Engine Module | Class | Use Case |
+|---------------|-------|----------|
+| `engines.spot` | `SpotBalanceEngine` | Spot trades |
+| `engines.perpetual` | `PerpetualBalanceEngine` | Perpetual futures |
 | `engines.option` | `OptionBalanceEngine` | Options |
-| `engines.funding` | `FundingBalanceEngine` | Funding payments |
-| `engines.borrow` | `BorrowBalanceEngine` | Borrow/lending |
-| `engines.rate` | `RateBalanceEngine` | Interest scheduling |
-| `engines.staking` | `StakingBalanceEngine` | Staking rewards |
-| `engines.multiengine` | `MultiEngine` | Multiple types |
+| `engines.borrowing` | `BorrowBalanceEngine` | Borrow/repay lifecycle |
+| `engines.staking` | `StakingBalanceEngine` | Stake/unstake lifecycle |
+| `engines.multiengine` | `BalanceMultiEngine` | Trade engine router |
 | `engines.dashboard` | `Dashboard` | Portfolio aggregation |
 
-All engines implement `BalanceEngine` and accept market-type-specific operation details objects.
+### Settlement Engines (SettlementEngine)
+
+| Engine Module | Class | Use Case |
+|---------------|-------|----------|
+| `engines.funding` | `FundingSettlementEngine` | Funding payments |
+| `engines.borrowing` | `InterestSettlementEngine` | Interest accrual |
+| `engines.staking` | `RewardSettlementEngine` | Reward distribution |
+| `engines.periodic` | `PeriodicSimulator` | Multi-period simulation |
+
+Lifecycle engines implement `BalanceEngine` (4-phase model). Settlement engines implement `SettlementEngine` (single-payment model).
 
 ---
 

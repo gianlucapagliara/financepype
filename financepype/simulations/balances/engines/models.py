@@ -90,10 +90,12 @@ class InvolvementType(Enum):
     This enum specifies the timing of each cashflow:
     - OPENING: When opening a position (e.g., initial margin, purchase cost)
     - CLOSING: When closing a position (e.g., sale proceeds, PnL)
+    - SETTLEMENT: Recurring settlement event (funding, interest, reward)
     """
 
     OPENING = "opening"
     CLOSING = "closing"
+    SETTLEMENT = "settlement"
 
 
 class CashflowType(Enum):
@@ -138,6 +140,8 @@ class AssetCashflow:
     cashflow_type: CashflowType
     reason: CashflowReason
     amount: Decimal = Decimal(0)
+    period_index: int | None = None
+    timestamp: int | None = None
 
     def __post_init__(self) -> None:
         if self.amount.is_nan():
@@ -478,6 +482,13 @@ class StakingOrderDetails(BaseModel):
     amount: Decimal = Field(description="Amount being staked")
     reward_rate: Decimal = Field(description="Annual reward rate (percentage, APY)")
     staking_duration: int = Field(description="Duration in seconds for reward accrual")
+    compound: bool = Field(
+        default=False, description="Whether rewards compound (auto-restake)"
+    )
+    compound_interval: int = Field(
+        default=86400,
+        description="Compounding interval in seconds (default: 1 day)",
+    )
     position_action: PositionAction = Field(
         description="Opening or closing the position"
     )
@@ -511,6 +522,11 @@ class BorrowOrderDetails(BaseModel):
     amount: Decimal = Field(description="Amount being borrowed")
     collateral_amount: Decimal = Field(description="Amount of collateral deposited")
     interest_rate: Decimal = Field(description="Annual interest rate (percentage)")
+    borrow_duration: int = Field(
+        default=0,
+        description="Borrow duration in seconds for interest accrual. "
+        "When 0, interest_rate is treated as the total rate for the period.",
+    )
     position_action: PositionAction = Field(
         description="Opening or closing the position"
     )
@@ -545,6 +561,102 @@ class FundingOrderDetails(BaseModel):
     payment_period: int = Field(description="Funding payment period in seconds")
     position_side: str = Field(description="Side of the position (LONG/SHORT)")
     fee: OperationFee = Field(description="Fee structure for the operation")
+
+
+@dataclass(slots=True)
+class FundingSettlementDetails:
+    """Details for a single funding settlement event.
+
+    Unlike FundingOrderDetails (lifecycle model), this represents one
+    instantaneous payment. The rate is a parameter, not baked into config,
+    because in a backtest the position is stable across many payments while
+    the rate changes every period.
+    """
+
+    settlement_asset: Asset
+    position_size: Decimal
+    position_side: str  # "LONG" / "SHORT"
+    rate: Decimal  # funding rate for THIS period (percentage)
+    timestamp: int  # when this settlement fires (unix seconds)
+    fee: OperationFee
+
+
+@dataclass(slots=True)
+class InterestSettlementDetails:
+    """Details for a single interest accrual settlement event.
+
+    Represents one period's interest on a borrow position.
+    """
+
+    borrowed_asset: Asset
+    principal: Decimal
+    rate: Decimal  # annual interest rate (percentage) for this period
+    duration_seconds: int  # this period's length
+    timestamp: int  # when this settlement fires (unix seconds)
+    fee: OperationFee
+
+
+@dataclass(slots=True)
+class RewardSettlementDetails:
+    """Details for a single staking reward settlement event.
+
+    Represents one epoch's reward distribution.
+    """
+
+    staked_asset: Asset
+    reward_asset: Asset
+    principal: Decimal
+    rate: Decimal  # annual reward rate (percentage) for this epoch
+    duration_seconds: int  # this epoch's length
+    timestamp: int  # when this settlement fires (unix seconds)
+    fee: OperationFee
+
+
+@dataclass
+class PeriodicSimulationResult:
+    """Results of simulating a multi-period operation (funding, interest, staking rewards).
+
+    Attributes:
+        operation_details: The base order details used for the simulation
+        period_results: One OperationSimulationResult per period
+    """
+
+    operation_details: Any
+    period_results: "list[OperationSimulationResult]"
+
+    @functools.cached_property
+    def total_cashflows(self) -> list[AssetCashflow]:
+        """All cashflows across all periods, flattened."""
+        return [cf for r in self.period_results for cf in r.cashflows]
+
+    @functools.cached_property
+    def total_by_asset(self) -> dict[Asset, Decimal]:
+        """Net cashflow per asset across all periods."""
+        totals: dict[Asset, Decimal] = {}
+        for cf in self.total_cashflows:
+            totals[cf.asset] = totals.get(cf.asset, s_decimal_0) + cf.cashflow_amount
+        return totals
+
+    @functools.cached_property
+    def _timestamp_index(self) -> dict[int, list[AssetCashflow]]:
+        """Index of cashflows by timestamp for O(1) lookups."""
+        index: dict[int, list[AssetCashflow]] = {}
+        for cf in self.total_cashflows:
+            if cf.timestamp is not None:
+                index.setdefault(cf.timestamp, []).append(cf)
+        return index
+
+    def cashflows_at(self, timestamp: int) -> list[AssetCashflow]:
+        """Return cashflows at an exact timestamp."""
+        return self._timestamp_index.get(timestamp, [])
+
+    def cashflows_in_range(self, start: int, end: int) -> list[AssetCashflow]:
+        """Return cashflows within [start, end)."""
+        return [
+            cf
+            for cf in self.total_cashflows
+            if cf.timestamp is not None and start <= cf.timestamp < end
+        ]
 
 
 @dataclass

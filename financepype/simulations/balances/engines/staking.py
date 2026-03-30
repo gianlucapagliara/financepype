@@ -10,8 +10,10 @@ from financepype.simulations.balances.engines.models import (
     CashflowReason,
     CashflowType,
     InvolvementType,
+    RewardSettlementDetails,
     StakingOrderDetails,
 )
+from financepype.simulations.balances.engines.settlement import SettlementEngine
 
 SECONDS_PER_YEAR = Decimal("31536000")  # 365 * 24 * 60 * 60
 
@@ -52,14 +54,29 @@ class StakingBalanceEngine(BalanceEngine):
     def _calculate_reward(cls, order_details: StakingOrderDetails) -> Decimal:
         """Calculate accrued staking reward.
 
-        reward = amount * reward_rate * (staking_duration / seconds_per_year)
+        Simple interest (default):
+            reward = amount * reward_rate * (staking_duration / seconds_per_year)
+
+        Compound interest (compound=True):
+            A = amount * (1 + rate * interval / year) ^ (duration / interval)
+            reward = A - amount
+
         reward_rate is APY as a decimal percentage (e.g. 5 means 5%).
         """
-        return (
-            order_details.amount
-            * (order_details.reward_rate / Decimal("100"))
-            * (Decimal(order_details.staking_duration) / SECONDS_PER_YEAR)
-        )
+        rate = order_details.reward_rate / Decimal("100")
+        duration = Decimal(order_details.staking_duration)
+
+        if order_details.compound and order_details.compound_interval > 0:
+            interval = Decimal(order_details.compound_interval)
+            n_periods = int(duration / interval)
+            if n_periods <= 0:
+                # Duration shorter than one compound interval — simple interest
+                return order_details.amount * rate * (duration / SECONDS_PER_YEAR)
+            rate_per_period = rate * interval / SECONDS_PER_YEAR
+            final = order_details.amount * (1 + rate_per_period) ** n_periods
+            return final - order_details.amount
+
+        return order_details.amount * rate * (duration / SECONDS_PER_YEAR)
 
     @classmethod
     def _calculate_fee_amount(cls, order_details: StakingOrderDetails) -> Decimal:
@@ -265,6 +282,70 @@ class StakingBalanceEngine(BalanceEngine):
                         cashflow_type=CashflowType.INFLOW,
                         reason=CashflowReason.REWARD,
                         amount=reward,
+                    )
+                )
+
+        return result
+
+
+class RewardSettlementEngine(SettlementEngine):
+    """Settlement engine for a single staking reward distribution.
+
+    Primary interface for backtesting. Computes reward for one epoch
+    given the current staked principal and rate.
+    """
+
+    @classmethod
+    def _calculate_reward(cls, details: RewardSettlementDetails) -> Decimal:
+        rate = details.rate / Decimal("100")
+        return (
+            details.principal
+            * rate
+            * (Decimal(details.duration_seconds) / SECONDS_PER_YEAR)
+        )
+
+    @classmethod
+    def _calculate_fee(cls, details: RewardSettlementDetails) -> Decimal:
+        if details.fee.fee_type == FeeType.ABSOLUTE:
+            return details.fee.amount
+        if details.fee.fee_type == FeeType.PERCENTAGE:
+            if details.fee.impact_type == FeeImpactType.DEDUCTED_FROM_RETURNS:
+                base = cls._calculate_reward(details)
+            else:
+                base = details.principal
+            return base * (details.fee.amount / Decimal("100"))
+        raise ValueError(f"Unsupported fee type: {details.fee.fee_type}")
+
+    @classmethod
+    def compute_settlement(
+        cls, details: RewardSettlementDetails
+    ) -> list[AssetCashflow]:
+        result: list[AssetCashflow] = []
+        reward = cls._calculate_reward(details)
+
+        if reward > s_decimal_0:
+            result.append(
+                AssetCashflow(
+                    asset=details.reward_asset,
+                    involvement_type=InvolvementType.SETTLEMENT,
+                    cashflow_type=CashflowType.INFLOW,
+                    reason=CashflowReason.REWARD,
+                    amount=reward,
+                    timestamp=details.timestamp,
+                )
+            )
+
+        if details.fee.amount > s_decimal_0:
+            fee_amount = cls._calculate_fee(details)
+            if fee_amount > s_decimal_0:
+                result.append(
+                    AssetCashflow(
+                        asset=details.reward_asset,
+                        involvement_type=InvolvementType.SETTLEMENT,
+                        cashflow_type=CashflowType.OUTFLOW,
+                        reason=CashflowReason.FEE,
+                        amount=fee_amount,
+                        timestamp=details.timestamp,
                     )
                 )
 

@@ -7,14 +7,14 @@ types and tracking mechanisms for monitoring balance changes.
 The package is organized into two main components:
 
 1. Engines (engines/):
-   Simulation engines for different market types:
-   - Spot markets (spot.py)
-   - Perpetual futures (perpetual.py)
-   - Options (option.py)
-   - Multi-market coordination (multiengine.py)
-   - Base engine interface (engine.py)
-   - Common models (models.py)
-   - Dashboard visualization (dashboard.py)
+   Simulation engines for different market types and recurring cashflows:
+   - Base interfaces: engine.py (BalanceEngine), settlement.py (SettlementEngine)
+   - Trade lifecycle: spot.py, perpetual.py, option.py
+   - Recurring cashflows: funding.py, borrowing.py, staking.py
+   - Periodic simulation: periodic.py (PeriodicSimulator)
+   - Multi-market coordination: multiengine.py
+   - Common models: models.py
+   - Dashboard visualization: dashboard.py
 
 2. Tracking (tracking/):
    Balance tracking and monitoring tools:
