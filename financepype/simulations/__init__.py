@@ -6,10 +6,9 @@ types of trading environments, balance tracking, and performance analysis.
 
 Key Components:
 1. Balance Simulation (balances/):
-   - Engine-based simulation of different market types
-   - Spot market simulation
-   - Perpetual futures simulation
-   - Options market simulation
+   - Lifecycle engines for trade simulation (spot, perpetual, options, borrow, staking)
+   - Settlement engines for recurring cashflows (funding, interest, rewards)
+   - Periodic simulator for multi-period rate schedule iteration
    - Multi-engine coordination for complex strategies
 
 2. Balance Tracking (balances/tracking/):

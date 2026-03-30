@@ -1,14 +1,13 @@
 """Periodic simulator for recurring cashflows.
 
-Provides two interfaces:
+Uses ``SettlementEngine`` subclasses to compute one payment at a time. Each
+method accepts a rate schedule, iterates it, and collects results into a
+``PeriodicSimulationResult``.
 
-1. **Settlement-based** (primary, for backtesting): Uses ``SettlementEngine``
-   subclasses to compute one payment at a time. Each method accepts a rate
-   schedule, iterates it, and collects results into a
-   ``PeriodicSimulationResult``.
-
-2. **Lifecycle-based** (backward-compatible): Uses ``BalanceEngine`` subclasses
-   with the 4-phase model. Kept for projection/analysis use cases.
+For interest and staking rewards, a ``rate_schedule=None`` fallback delegates
+to the lifecycle ``BalanceEngine`` (``BorrowBalanceEngine`` /
+``StakingBalanceEngine``) for single-period simulation of the full
+open-to-close lifecycle.
 """
 
 from dataclasses import replace
@@ -40,9 +39,10 @@ from financepype.simulations.balances.engines.staking import (
 class PeriodicSimulator:
     """Stateless simulator that iterates settlement engines over rate schedules.
 
-    Primary methods use ``SettlementEngine`` subclasses (per-payment model).
-    Legacy methods (``simulate_funding_lifecycle``, etc.) use the 4-phase
-    ``BalanceEngine`` for backward compatibility.
+    All methods use ``SettlementEngine`` subclasses (per-payment model).
+    ``simulate_interest`` and ``simulate_staking_rewards`` fall back to their
+    respective lifecycle engines when ``rate_schedule=None`` for single-period
+    open-to-close simulation.
     """
 
     # ------------------------------------------------------------------

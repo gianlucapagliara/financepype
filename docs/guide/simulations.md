@@ -156,22 +156,33 @@ from financepype.simulations.balances.engines.models import (
 | Enum | Values |
 |------|--------|
 | `CashflowType` | `INFLOW`, `OUTFLOW` |
-| `InvolvementType` | `OPENING`, `CLOSING` |
-| `CashflowReason` | `OPERATION`, `FEE`, `PNL`, `FUNDING`, `INTEREST`, `REWARD` |
+| `InvolvementType` | `OPENING`, `CLOSING`, `SETTLEMENT` |
+| `CashflowReason` | `OPERATION`, `FEE`, `PNL`, `FUNDING`, `INTEREST`, `REWARD`, `MARGIN`, `COLLATERAL` |
 
-### Available Engines
+### Lifecycle Engines (BalanceEngine)
+
+Model position lifecycles with 4 phases (opening outflows/inflows, closing outflows/inflows).
 
 | Engine | Market | Description |
 |--------|--------|-------------|
 | `SpotBalanceEngine` | Spot | Buy/sell asset, deduct fees |
 | `PerpetualBalanceEngine` | Perpetual | Margin, PnL, funding exposure |
 | `OptionBalanceEngine` | Options | Premium, settlement |
-| `FundingBalanceEngine` | Perpetual | Funding payment cashflows |
-| `BorrowBalanceEngine` | Lending | Borrow/repay, interest |
-| `RateBalanceEngine` | Lending | Interest payment scheduling |
-| `StakingBalanceEngine` | Staking | Stake/unstake, rewards |
+| `BorrowBalanceEngine` | Lending | Open/close borrow lifecycle (collateral, repayment) |
+| `StakingBalanceEngine` | Staking | Open/close staking lifecycle (stake, unstake, rewards) |
 | `MultiEngine` | Any | Combine multiple engines |
 | `Dashboard` | Any | Aggregate simulation results |
+
+### Settlement Engines (SettlementEngine)
+
+Model instantaneous recurring events (one payment at a time, with timestamps).
+
+| Engine | Use Case | Description |
+|--------|----------|-------------|
+| `FundingSettlementEngine` | Perpetual | Single funding payment |
+| `InterestSettlementEngine` | Lending | Single interest accrual period |
+| `RewardSettlementEngine` | Staking | Single reward distribution epoch |
+| `PeriodicSimulator` | Any | Iterates settlement engines over rate schedules |
 
 ### Example: Spot Engine
 
@@ -183,12 +194,14 @@ print(result.opening_outflows)  # e.g., USDT leaving (buy cost)
 print(result.closing_inflows)   # e.g., BTC arriving (purchase)
 ```
 
-### Example: Funding Engine
+### Example: Funding Settlement
 
 ```python
-from financepype.simulations.balances.engines.funding import FundingBalanceEngine
+from financepype.simulations.balances.engines.periodic import PeriodicSimulator
 
-result = FundingBalanceEngine.get_complete_simulation(funding_order_details)
+# Simulate multiple funding payments over a rate schedule
+result = PeriodicSimulator.simulate_funding(funding_order_details, rate_schedule)
+print(result.total_by_asset)  # Net funding impact across all periods
 ```
 
 ## BalanceSimulationEngine
