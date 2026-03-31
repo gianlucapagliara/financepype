@@ -50,7 +50,7 @@ Example:
     >>> tracker.lock_balance(lock)
 """
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from decimal import Decimal
@@ -62,6 +62,8 @@ from financepype.assets.contract import DerivativeContract
 from financepype.constants import s_decimal_0
 from financepype.markets.position import Position
 from financepype.simulations.balances.tracking.lock import BalanceLock
+
+_EMPTY_LOCK_DICT: dict[str, BalanceLock] = {}
 
 
 class BalanceType(Enum):
@@ -165,59 +167,55 @@ class BalanceTracker:
         self._positions: dict[DerivativeContract, Position] = {}
         self._locks: dict[Asset, dict[str, BalanceLock]] = {}
 
+        self._total_balances_view = MappingProxyType(self._total_balances)
+        self._available_balances_view = MappingProxyType(self._available_balances)
+        self._positions_view = MappingProxyType(self._positions)
+        self._locks_view = MappingProxyType(self._locks)
+
         self._track_history = track_history
         self._balance_history: list[BalanceChange] = []
 
     @property
-    def balance_history(self) -> tuple[BalanceChange, ...]:
+    def balance_history(self) -> Sequence[BalanceChange]:
         """Record of all balance changes (if history tracking is enabled)."""
-        return tuple(self._balance_history)
+        return self._balance_history
 
     @property
     def total_balances(self) -> Mapping[Asset, Decimal]:
         """All assets owned by the account."""
-        return MappingProxyType(self._total_balances)
+        return self._total_balances_view
 
     @property
     def available_balances(self) -> Mapping[Asset, Decimal]:
         """Assets that are free for trading."""
-        return MappingProxyType(self._available_balances)
+        return self._available_balances_view
 
     @property
     def positions(self) -> Mapping[DerivativeContract, Position]:
         """Currently open positions."""
-        return MappingProxyType(self._positions)
+        return self._positions_view
 
     @property
     def locks(self) -> Mapping[Asset, Mapping[str, BalanceLock]]:
         """Currently locked balances by asset and purpose."""
-        return MappingProxyType(self._locks)
+        return self._locks_view
 
     def clear_balance_history(self) -> None:
         """Clear the balance change history."""
         self._balance_history.clear()
 
-    def record_balance_change(self, change: BalanceChange) -> None:
-        """Record a balance change in the history.
-
-        This method only records the change if history tracking is enabled.
-
-        Args:
-            change: The balance change to record
-        """
-        if not self._track_history:
-            return
-        self._balance_history.append(change)
-
-    def _get_balance_change(
+    def _record_balance_change(
         self,
         asset: Asset,
         amount: Decimal,
         reason: str,
         balance_type: BalanceType,
         update_type: BalanceUpdateType,
-    ) -> BalanceChange:
-        """Create a new balance change record.
+    ) -> None:
+        """Record a balance change in history if tracking is enabled.
+
+        Only allocates the BalanceChange object when history tracking is on,
+        avoiding the dataclass + datetime.now() cost on every balance operation.
 
         Args:
             asset: The asset whose balance changed
@@ -225,16 +223,17 @@ class BalanceTracker:
             reason: Description of why the change occurred
             balance_type: Type of balance affected
             update_type: How the balance was updated
-
-        Returns:
-            A new BalanceChange instance
         """
-        return BalanceChange(
-            asset=asset,
-            amount=amount,
-            reason=reason,
-            balance_type=balance_type,
-            update_type=update_type,
+        if not self._track_history:
+            return
+        self._balance_history.append(
+            BalanceChange(
+                asset=asset,
+                amount=amount,
+                reason=reason,
+                balance_type=balance_type,
+                update_type=update_type,
+            )
         )
 
     def add_balance(
@@ -265,10 +264,8 @@ class BalanceTracker:
             else self._available_balances
         )
 
-        self.record_balance_change(
-            self._get_balance_change(
-                asset, amount, reason, balance_type, BalanceUpdateType.DIFFERENTIAL
-            )
+        self._record_balance_change(
+            asset, amount, reason, balance_type, BalanceUpdateType.DIFFERENTIAL
         )
         if asset in balance_dict:
             balance_dict[asset] += amount
@@ -310,14 +307,9 @@ class BalanceTracker:
 
         if balance_dict[asset] < amount:
             raise ValueError("Insufficient balance")
-        balance_change = self._get_balance_change(
-            asset,
-            -amount,
-            reason,
-            balance_type,
-            BalanceUpdateType.DIFFERENTIAL,
+        self._record_balance_change(
+            asset, -amount, reason, balance_type, BalanceUpdateType.DIFFERENTIAL
         )
-        self.record_balance_change(balance_change)
 
         balance_dict[asset] -= amount
         if balance_dict[asset] <= s_decimal_0:
@@ -361,14 +353,15 @@ class BalanceTracker:
         )
         change_amount = amount - balance_dict.get(asset, s_decimal_0)
         balance_dict[asset] = amount
-        balance_change = self._get_balance_change(
-            asset,
-            change_amount,
-            reason,
-            balance_type,
-            BalanceUpdateType.SNAPSHOT,
+        balance_change = BalanceChange(
+            asset=asset,
+            amount=change_amount,
+            reason=reason,
+            balance_type=balance_type,
+            update_type=BalanceUpdateType.SNAPSHOT,
         )
-        self.record_balance_change(balance_change)
+        if self._track_history:
+            self._balance_history.append(balance_change)
 
         return balance_change
 
@@ -462,10 +455,10 @@ class BalanceTracker:
         position = self._positions.pop(asset, None)
         if position:
             self.remove_balance(
-                asset, position.value, "Remove Position", BalanceType.TOTAL
+                asset, position.amount, "Remove Position", BalanceType.TOTAL
             )
             self.remove_balance(
-                asset, position.value, "Remove Position", BalanceType.AVAILABLE
+                asset, position.amount, "Remove Position", BalanceType.AVAILABLE
             )
         return position
 
@@ -520,10 +513,7 @@ class BalanceTracker:
             ... )
             >>> tracker.lock_balance(lock)
         """
-        if not (
-            lock.asset in self._available_balances
-            and self._available_balances[lock.asset] >= lock.amount
-        ):
+        if self.get_unlocked_balance(lock.asset) < lock.amount:
             raise ValueError("Insufficient balance to lock")
 
         if lock.asset not in self._locks:
@@ -558,26 +548,28 @@ class BalanceTracker:
                 )
 
     def lock_multiple_balances(self, locks: list[BalanceLock]) -> list[BalanceLock]:
-        completed_locks: list[BalanceLock] = []
+        completed: list[tuple[BalanceLock, Decimal]] = []
         try:
             for lock in locks:
-                completed_locks.append(self.lock_balance(lock))
+                original_amount = lock.amount
+                completed.append((self.lock_balance(lock), original_amount))
         except ValueError as e:
-            # If any lock fails, release all previous locks
-            for lock in completed_locks:
-                self.release_locked_balance(lock.asset, lock.purpose, lock.amount)
+            # If any lock fails, release only the delta that was added
+            for locked, added_amount in completed:
+                self.release_locked_balance(locked.asset, locked.purpose, added_amount)
             raise ValueError("Failed to lock all required balances") from e
 
-        return completed_locks
+        return [lock for lock, _ in completed]
 
     def simulate_locks(self, locks: list[BalanceLock]) -> bool:
-        try:
-            self.lock_multiple_balances(locks)
-            for lock in locks:
-                self.release_locked_balance(lock.asset, lock.purpose, lock.amount)
-            return True
-        except ValueError:
-            return False
+        """Check if all locks can be acquired without mutating state."""
+        required: dict[Asset, Decimal] = {}
+        for lock in locks:
+            required[lock.asset] = required.get(lock.asset, s_decimal_0) + lock.amount
+        for asset, needed in required.items():
+            if self.get_unlocked_balance(asset) < needed:
+                return False
+        return True
 
     def use_locked_balance(self, asset: Asset, purpose: str, amount: Decimal) -> None:
         self._check_lock(asset, purpose)
@@ -623,9 +615,9 @@ class BalanceTracker:
             raise ValueError(f"Invalid balance type: {balance_type}")
 
     def get_unlocked_balance(self, asset: Asset) -> Decimal:
-        return self.get_balance(asset, BalanceType.AVAILABLE) - sum(
-            locked_balance.remaining
-            for locked_balance in self._locks.get(asset, {}).values()
+        return self._available_balances.get(asset, s_decimal_0) - sum(
+            (lb.remaining for lb in self._locks.get(asset, _EMPTY_LOCK_DICT).values()),
+            s_decimal_0,
         )
 
     def get_locked_balance(self, asset: Asset, purpose: str) -> Decimal:

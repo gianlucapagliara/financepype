@@ -190,3 +190,108 @@ class TestBalanceTracker:
 
         balance_tracker.unfreeze_locked_balance(btc_asset, "trade", Decimal("0.5"))
         assert balance_tracker.get_locked_balance(btc_asset, "trade") == Decimal("1.0")
+
+    # === C1: lock_balance checks unlocked balance, not gross available ===
+
+    def test_lock_balance_rejects_overcommit(
+        self, balance_tracker: BalanceTracker, btc_asset: Asset
+    ) -> None:
+        """C1: Multiple locks must not exceed unlocked balance."""
+        balance_tracker.add_balance(
+            btc_asset, Decimal("10.0"), "deposit", BalanceType.AVAILABLE
+        )
+        lock1 = BalanceLock(asset=btc_asset, amount=Decimal("8.0"), purpose="margin_a")
+        balance_tracker.lock_balance(lock1)
+
+        # Only 2.0 unlocked remains; locking 5.0 must fail
+        lock2 = BalanceLock(asset=btc_asset, amount=Decimal("5.0"), purpose="margin_b")
+        with pytest.raises(ValueError, match="Insufficient balance to lock"):
+            balance_tracker.lock_balance(lock2)
+
+    def test_lock_balance_allows_within_unlocked(
+        self, balance_tracker: BalanceTracker, btc_asset: Asset
+    ) -> None:
+        """C1: Locking within unlocked balance succeeds."""
+        balance_tracker.add_balance(
+            btc_asset, Decimal("10.0"), "deposit", BalanceType.AVAILABLE
+        )
+        lock1 = BalanceLock(asset=btc_asset, amount=Decimal("6.0"), purpose="margin_a")
+        balance_tracker.lock_balance(lock1)
+
+        # 4.0 unlocked remains; locking 4.0 must succeed
+        lock2 = BalanceLock(asset=btc_asset, amount=Decimal("4.0"), purpose="margin_b")
+        result = balance_tracker.lock_balance(lock2)
+        assert result.amount == Decimal("4.0")
+        assert balance_tracker.get_unlocked_balance(btc_asset) == s_decimal_0
+
+    # === C4: simulate_locks is read-only ===
+
+    def test_simulate_locks_does_not_mutate_state(
+        self, balance_tracker: BalanceTracker, btc_asset: Asset
+    ) -> None:
+        """C4: simulate_locks must not create or modify any locks."""
+        balance_tracker.add_balance(
+            btc_asset, Decimal("5.0"), "deposit", BalanceType.AVAILABLE
+        )
+        # Pre-existing lock
+        existing_lock = BalanceLock(
+            asset=btc_asset, amount=Decimal("2.0"), purpose="existing"
+        )
+        balance_tracker.lock_balance(existing_lock)
+
+        locks_to_test = [
+            BalanceLock(asset=btc_asset, amount=Decimal("1.0"), purpose="existing"),
+        ]
+        result = balance_tracker.simulate_locks(locks_to_test)
+        assert result is True
+
+        # Pre-existing lock must be unchanged
+        assert balance_tracker.get_locked_balance(btc_asset, "existing") == Decimal(
+            "2.0"
+        )
+        assert balance_tracker.get_unlocked_balance(btc_asset) == Decimal("3.0")
+
+    def test_simulate_locks_rejects_overcommit(
+        self, balance_tracker: BalanceTracker, btc_asset: Asset
+    ) -> None:
+        """C4: simulate_locks rejects when total exceeds unlocked."""
+        balance_tracker.add_balance(
+            btc_asset, Decimal("5.0"), "deposit", BalanceType.AVAILABLE
+        )
+        lock = BalanceLock(asset=btc_asset, amount=Decimal("3.0"), purpose="existing")
+        balance_tracker.lock_balance(lock)
+
+        # Only 2.0 unlocked; simulating 3.0 must fail
+        locks_to_test = [
+            BalanceLock(asset=btc_asset, amount=Decimal("3.0"), purpose="new"),
+        ]
+        assert balance_tracker.simulate_locks(locks_to_test) is False
+
+    # === C5: lock_multiple_balances rollback preserves pre-existing locks ===
+
+    def test_lock_multiple_rollback_preserves_existing(
+        self, balance_tracker: BalanceTracker, btc_asset: Asset, usdt_asset: Asset
+    ) -> None:
+        """C5: Rollback on failure must not destroy pre-existing locks."""
+        balance_tracker.add_balance(
+            btc_asset, Decimal("10.0"), "deposit", BalanceType.AVAILABLE
+        )
+        balance_tracker.add_balance(
+            usdt_asset, Decimal("1.0"), "deposit", BalanceType.AVAILABLE
+        )
+
+        # Pre-existing lock on BTC
+        existing = BalanceLock(asset=btc_asset, amount=Decimal("5.0"), purpose="margin")
+        balance_tracker.lock_balance(existing)
+
+        # Try to lock BTC (merge into existing) + USDT (will fail: need 10, have 1)
+        locks = [
+            BalanceLock(asset=btc_asset, amount=Decimal("3.0"), purpose="margin"),
+            BalanceLock(asset=usdt_asset, amount=Decimal("10.0"), purpose="margin"),
+        ]
+        with pytest.raises(ValueError, match="Failed to lock all required balances"):
+            balance_tracker.lock_multiple_balances(locks)
+
+        # Pre-existing BTC lock must be intact at 5.0
+        assert balance_tracker.get_locked_balance(btc_asset, "margin") == Decimal("5.0")
+        assert balance_tracker.get_unlocked_balance(btc_asset) == Decimal("5.0")

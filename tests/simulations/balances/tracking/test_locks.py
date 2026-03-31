@@ -72,9 +72,31 @@ def test_balance_lock_release(btc_asset: SpotAsset) -> None:
     lock.release(Decimal("0.5"))
     assert lock.amount == Decimal("1.0")
 
-    # Test releasing more than available
+    # Test releasing more than remaining
     with pytest.raises(ValueError, match="Insufficient locked balance to release"):
         lock.release(Decimal("1.5"))
+
+
+def test_balance_lock_release_respects_used_and_frozen(btc_asset: SpotAsset) -> None:
+    """C3: release() must not allow releasing past used+frozen portions."""
+    lock = BalanceLock(
+        asset=btc_asset,
+        amount=Decimal("10.0"),
+        purpose="test",
+        lock_type=LockType.HARD,
+    )
+    lock.use(Decimal("3.0"))
+    lock.freeze(Decimal("2.0"))
+    # remaining = 10 - 3 - 2 = 5
+
+    # Releasing 5.0 (all remaining) should work
+    lock.release(Decimal("5.0"))
+    assert lock.amount == Decimal("5.0")
+    assert lock.remaining == Decimal("0")
+
+    # Releasing any more must fail (remaining is 0, used=3, frozen=2)
+    with pytest.raises(ValueError, match="Insufficient locked balance to release"):
+        lock.release(Decimal("1.0"))
 
 
 def test_balance_lock_use(btc_asset: SpotAsset) -> None:

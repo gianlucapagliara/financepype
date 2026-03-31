@@ -109,6 +109,7 @@ class BalanceLock:
 
         self._used = s_decimal_0
         self._freezed = s_decimal_0
+        self._remaining = amount
 
     def __repr__(self) -> str:
         """Get string representation of the lock."""
@@ -151,7 +152,7 @@ class BalanceLock:
     @property
     def remaining(self) -> Decimal:
         """Amount still available (amount - used - freezed)."""
-        return self.amount - self.used - self.freezed
+        return self._remaining
 
     def add(self, lock: "BalanceLock") -> None:
         """Add another lock's amount to this lock.
@@ -165,6 +166,7 @@ class BalanceLock:
         if self.lock_type != lock.lock_type:
             raise ValueError("Lock type mismatch")
         self._amount += lock.amount
+        self._remaining += lock.amount
 
     def release(self, amount: Decimal) -> None:
         """Release some of the locked amount.
@@ -175,10 +177,10 @@ class BalanceLock:
         Raises:
             ValueError: If trying to release more than is locked
         """
-        if self.amount >= amount:
-            self._amount -= amount
-        else:
+        if self._remaining < amount:
             raise ValueError("Insufficient locked balance to release")
+        self._amount -= amount
+        self._remaining -= amount
 
     def use(self, amount: Decimal) -> None:
         """Mark some of the remaining balance as used.
@@ -189,9 +191,10 @@ class BalanceLock:
         Raises:
             ValueError: If trying to use more than is remaining
         """
-        if self.remaining < amount:
+        if self._remaining < amount:
             raise ValueError("Insufficient remaining balance to use")
         self._used += amount
+        self._remaining -= amount
 
     def freeze(self, amount: Decimal) -> None:
         """Freeze some of the remaining balance.
@@ -202,9 +205,10 @@ class BalanceLock:
         Raises:
             ValueError: If trying to freeze more than is remaining
         """
-        if self.remaining < amount:
+        if self._remaining < amount:
             raise ValueError("Insufficient remaining balance to freeze")
         self._freezed += amount
+        self._remaining -= amount
 
     def unfreeze(self, amount: Decimal) -> None:
         """Unfreeze some of the frozen balance.
@@ -215,9 +219,10 @@ class BalanceLock:
         Raises:
             ValueError: If trying to unfreeze more than is frozen
         """
-        if self.freezed < amount:
+        if self._freezed < amount:
             raise ValueError("Insufficient freezed balance to unfreeze")
         self._freezed -= amount
+        self._remaining += amount
 
 
 class DynamicLock(BalanceLock):
@@ -300,4 +305,6 @@ class DynamicLock(BalanceLock):
 
     def update(self) -> None:
         """Update the lock amount based on the current quantity."""
+        old_amount = self._amount
         self._amount = self.update_function(self.other_asset_quantity)
+        self._remaining += self._amount - old_amount
