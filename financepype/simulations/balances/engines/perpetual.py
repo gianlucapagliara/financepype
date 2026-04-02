@@ -10,6 +10,9 @@ from financepype.markets.position import Position
 from financepype.operations.fees import FeeImpactType, FeeType
 from financepype.operations.orders.models import PositionAction, TradeType
 from financepype.simulations.balances.engines.engine import BalanceEngine
+from financepype.simulations.balances.engines.liquidation import (
+    LiquidationPriceCalculator,
+)
 from financepype.simulations.balances.engines.models import (
     AssetCashflow,
     CashflowReason,
@@ -515,7 +518,14 @@ class PerpetualBalanceEngine(BasePerpetualBalanceEngine):
     @classmethod
     def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the liquidation price for a position."""
-        raise NotImplementedError
+        is_long = order_details.trade_type == TradeType.BUY
+        return LiquidationPriceCalculator.calculate_simple(
+            is_inverse=False,
+            is_long=is_long,
+            entry_price=order_details.price,
+            amount=order_details.amount,
+            leverage=Decimal(order_details.leverage),
+        )
 
     @classmethod
     def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:
@@ -595,7 +605,14 @@ class InversePerpetualBalanceEngine(BasePerpetualBalanceEngine):
     @classmethod
     def _calculate_liquidation_price(cls, order_details: OrderDetails) -> Decimal:
         """Calculate the liquidation price for a position."""
-        raise NotImplementedError
+        is_long = order_details.trade_type == TradeType.BUY
+        return LiquidationPriceCalculator.calculate_simple(
+            is_inverse=True,
+            is_long=is_long,
+            entry_price=order_details.price,
+            amount=order_details.amount,
+            leverage=Decimal(order_details.leverage),
+        )
 
     @classmethod
     def _calculate_pnl(cls, order_details: OrderDetails) -> Decimal:

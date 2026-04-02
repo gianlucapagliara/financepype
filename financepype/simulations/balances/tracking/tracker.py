@@ -156,11 +156,16 @@ class BalanceTracker:
         >>> print(tracker.get_balance(Asset("BTC"), BalanceType.TOTAL))  # 1.0
     """
 
-    def __init__(self, track_history: bool = False) -> None:
+    def __init__(
+        self, track_history: bool = False, allow_negative: bool = False
+    ) -> None:
         """Initialize a new balance tracker.
 
         Args:
-            track_history: Whether to record balance change history
+            track_history: Whether to record balance change history.
+            allow_negative: When True, ``remove_balance`` allows the
+                resulting balance to go below zero and ``set_balance``
+                accepts negative amounts.
         """
         self._total_balances: dict[Asset, Decimal] = {}
         self._available_balances: dict[Asset, Decimal] = {}
@@ -173,6 +178,7 @@ class BalanceTracker:
         self._locks_view = MappingProxyType(self._locks)
 
         self._track_history = track_history
+        self._allow_negative = allow_negative
         self._balance_history: list[BalanceChange] = []
 
     @property
@@ -303,16 +309,19 @@ class BalanceTracker:
             else self._available_balances
         )
         if asset not in balance_dict:
-            raise ValueError("Asset not found in balances")
+            if self._allow_negative:
+                balance_dict[asset] = s_decimal_0
+            else:
+                raise ValueError("Asset not found in balances")
 
-        if balance_dict[asset] < amount:
+        if not self._allow_negative and balance_dict[asset] < amount:
             raise ValueError("Insufficient balance")
         self._record_balance_change(
             asset, -amount, reason, balance_type, BalanceUpdateType.DIFFERENTIAL
         )
 
         balance_dict[asset] -= amount
-        if balance_dict[asset] <= s_decimal_0:
+        if not self._allow_negative and balance_dict[asset] <= s_decimal_0:
             del balance_dict[asset]
 
     def set_balance(
@@ -343,7 +352,7 @@ class BalanceTracker:
             ...     balance_type=BalanceType.TOTAL
             ... )
         """
-        if amount < s_decimal_0:
+        if not self._allow_negative and amount < s_decimal_0:
             raise ValueError("Amount must be greater than 0")
 
         balance_dict = (

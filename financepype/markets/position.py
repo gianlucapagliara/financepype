@@ -55,12 +55,46 @@ class Position(BaseModel):
 
     @property
     def value(self) -> Decimal:
-        """Calculate the total value of the position.
+        """Position value in the contract's settlement currency.
+
+        For inverse contracts, value is denominated in base currency
+        (amount / entry_price). For linear contracts, value is denominated
+        in quote currency (entry_price * amount).
 
         Returns:
-            Decimal: Position value in quote currency
+            Decimal: Position value in settlement currency
         """
+        if self.asset.market_info.is_inverse:
+            return self.amount / self.entry_price
         return self.entry_price * self.amount
+
+    @property
+    def notional_value_quote(self) -> Decimal:
+        """Notional value in quote currency (always).
+
+        For inverse contracts, amount IS the USD notional so we return it
+        directly. For linear contracts we multiply entry_price * amount.
+
+        Returns:
+            Decimal: Notional value in quote currency
+        """
+        if self.asset.market_info.is_inverse:
+            return self.amount
+        return self.entry_price * self.amount
+
+    @property
+    def notional_value_base(self) -> Decimal:
+        """Notional value in base currency (always).
+
+        For inverse contracts, base value is amount / entry_price.
+        For linear contracts, base value is simply the amount.
+
+        Returns:
+            Decimal: Notional value in base currency
+        """
+        if self.asset.market_info.is_inverse:
+            return self.amount / self.entry_price
+        return self.amount
 
     @property
     def position_side(self) -> DerivativeSide:
